@@ -20,3 +20,12 @@
 
 
 https://user-images.githubusercontent.com/40577932/157911684-42268b8c-5c97-4d24-aad5-3816b5a7bc3f.mp4
+
+---
+
+## Nota — Trabalho de Algoritmos e Estrutura de Dados (UnB, 2026.2)
+
+Este projeto parte do jogo original criado por [elchic00](https://github.com/elchic00/pokemon) (ver histórico de commits acima).
+A partir deste ponto, o grupo G14 adiciona a implementação do algoritmo de **Dijkstra** para deslocamento no grid do jogo, como trabalho da disciplina de Projeto e Análise de Algoritmos.
+
+Repositório do trabalho: https://github.com/projeto-de-algoritmos-2026/G14_Grafos_PA-26.2
