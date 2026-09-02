@@ -121,10 +121,16 @@ def traverse_grid(grid):  # 0 = cant access, 1 =  empty land, 2 = pokemon, 3 = p
 @dataclass
 class CpuPlayer:
     name: str = random.choice(['Jenny', 'James', 'Jamal', 'Drizzy', 'Sam', 'Rachel'])
-    pokemon: Pokemon = generate_rand_pokemon()
+    pokemon: Pokemon = field(default_factory=generate_rand_pokemon)
     cash_award: int = random.randint(10000, 100000)
-    poke_gift: Pokemon = pokemon
+    poke_gift: Pokemon | None = None
     fact: str = f"My name is {name}, get ready to battle me!"
+
+    def __post_init__(self):
+        # No original, poke_gift era o MESMO objeto de pokemon (poke_gift: Pokemon = pokemon).
+        # Mantemos esse aliasing por instancia em vez de sortear um segundo pokemon.
+        if self.poke_gift is None:
+            self.poke_gift = self.pokemon
 
 
 def throw_pokeball(player, pokemon):
