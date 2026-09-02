@@ -75,68 +75,87 @@ def use_potion(player: Player, pokemon: Pokemon):
 
 
 def battle(player: Player, opp: str):
-    try:
-        if opp == 'cpu':
-            cpu = CpuPlayer()
-            print(cpu.fact)
-            print(f'You will be starting the battle with {player.pokemon_list[0].name} (a {player.pokemon_list[0].type_of_pokemon}), and battling {cpu.pokemon.name} (a {cpu.pokemon.type_of_pokemon})')
-            cpu_pokemon = cpu.pokemon
-        else:
-            cpu_pokemon = generate_rand_pokemon()
-            print(f"Get ready fight a wild {cpu_pokemon.type_of_pokemon}!")
-        print("You have the first move!")
-        caught, run = False, False
-        pokemon = player.pokemon_list[0]  # We will always start a battle with your first pokemon.
-        while player.pokemon_list is not None and cpu_pokemon.health > 0:
-            if opp == 'cpu': move = input(f"Do you want to use move 1 {next(iter(pokemon.moves))} (1), move 2 {list(pokemon.moves.keys())[1]} (2), use a potion (P), switch pokemon (S), or run (R)? ")
-            else: move = input(f"Do you want to use move 1 {next(iter(pokemon.moves))} (1), move 2 {list(pokemon.moves.keys())[1]} (2), use a potion (P), throw a pokeball (T), switch pokemon (S), or run (R)? ")
+    """Batalha contra um CPU ou um pokemon selvagem.
 
-            if move == '1':
-                cpu_pokemon.health -= list(pokemon.moves.values())[0]
-                print(f"You hit them with {list(pokemon.moves.keys())[0]}. {cpu_pokemon.name} has {cpu_pokemon.health} health left")
-                if cpu_pokemon.health <= 0: continue
-            elif move == '2':
-                cpu_pokemon.health -= list(pokemon.moves.values())[1]
-                print(f"You hit them with {list(pokemon.moves.keys())[1]}. Their pokemon has {cpu_pokemon.health} health left")
-                if cpu_pokemon.health <= 0: continue
-            elif move.upper() == 'P':
-                use_potion(player, pokemon)
-            elif move.upper() == 'R':
-                run = True
+    O `except:` nu que existia aqui engolia qualquer erro e imprimia
+    "Your done with this battle!", escondendo bug de verdade. Saiu na fase 1:
+    agora a condicao de parada do laco e explicita (time vazio encerra) e o
+    que quebrar sobe.
+
+    O que ele estava escondendo, e que continua de pe: o prompt monta
+    `list(pokemon.moves.keys())[1]`, ou seja, exige que todo pokemon tenha ao
+    menos dois golpes. Em partida normal isso vale (iniciais e sorteados vem
+    sempre com dois), mas um Pokemon() sem golpes quebra aqui. Quando a fase 5
+    automatizar a escolha de acao, e esse ponto que precisa deixar de assumir
+    a quantidade de golpes.
+    """
+    cpu = None
+    if opp == 'cpu':
+        cpu = CpuPlayer()
+        print(cpu.fact)
+        print(f'You will be starting the battle with {player.pokemon_list[0].name} (a {player.pokemon_list[0].type_of_pokemon}), and battling {cpu.pokemon.name} (a {cpu.pokemon.type_of_pokemon})')
+        cpu_pokemon = cpu.pokemon
+    else:
+        cpu_pokemon = generate_rand_pokemon()
+        print(f"Get ready fight a wild {cpu_pokemon.type_of_pokemon}!")
+    print("You have the first move!")
+    caught, run = False, False
+    pokemon = player.lider  # We will always start a battle with your first pokemon.
+    # O original testava `player.pokemon_list is not None`, que nunca e falso:
+    # a lista fica vazia, nao vira None. Ficar sem pokemon nao encerrava o laco.
+    while player.pokemon_list and cpu_pokemon.health > 0:
+        if opp == 'cpu': move = input(f"Do you want to use move 1 {next(iter(pokemon.moves))} (1), move 2 {list(pokemon.moves.keys())[1]} (2), use a potion (P), switch pokemon (S), or run (R)? ")
+        else: move = input(f"Do you want to use move 1 {next(iter(pokemon.moves))} (1), move 2 {list(pokemon.moves.keys())[1]} (2), use a potion (P), throw a pokeball (T), switch pokemon (S), or run (R)? ")
+
+        if move == '1':
+            cpu_pokemon.health -= list(pokemon.moves.values())[0]
+            print(f"You hit them with {list(pokemon.moves.keys())[0]}. {cpu_pokemon.name} has {cpu_pokemon.health} health left")
+            if cpu_pokemon.health <= 0: continue
+        elif move == '2':
+            cpu_pokemon.health -= list(pokemon.moves.values())[1]
+            print(f"You hit them with {list(pokemon.moves.keys())[1]}. Their pokemon has {cpu_pokemon.health} health left")
+            if cpu_pokemon.health <= 0: continue
+        elif move.upper() == 'P':
+            use_potion(player, pokemon)
+        elif move.upper() == 'R':
+            run = True
+            break
+        elif move.upper() == 'S':
+            print(player.poke_list_names())
+            change = input(f"Which pokemon do you want to switch to? ")
+            pokemon = player.change_poke(change)
+            print(f'{pokemon.name} has {pokemon.health} left. Get ready to fight!')
+        elif move.upper() == 'T':
+            caught = throw_pokeball(player, cpu_pokemon)
+            if caught is True:
                 break
-            elif move.upper() == 'S':
-                print(player.poke_list_names())
-                change = input(f"Which pokemon do you want to switch to? ")
-                pokemon = player.change_poke(change)
-                print(f'{pokemon.name} has {pokemon.health} left. Get ready to fight!')
-            elif move.upper() == 'T':
-                caught = throw_pokeball(player, cpu_pokemon)
-                if caught is True:
-                    break
-            cpu_move = random.choice(list(cpu_pokemon.moves.keys()))
-            pokemon.health -= cpu_pokemon.moves[cpu_move]
-            print(f"You were hit with {cpu_move} for {cpu_pokemon.moves[cpu_move]} HP! {pokemon.name} has {pokemon.health} health left.")
-            if pokemon.health <= 0 and player.bag['potion'] != 0:
-                pokemon.health = 0
-                use = input("Your pokemon is about to faint, do you want to use a potion? (Y or N)")
-                if use.upper() == 'Y':
-                    use_potion(player, pokemon)
-                else:
-                    rip = player.pokemon_list.pop(0)
-                    print(f"{rip.name} has fainted!")
-                    if player.pokemon_list is not None: print(f'You will now fight with {player.pokemon_list[0].name}!')
-        if caught is False and run is False:
-            if opp == 'cpu':
-                player.money += cpu.cash_award
-                print(f"Good job, you defeated {cpu.name}'s! You won ${cpu.cash_award}")
 
-            print(f"You defeated and won {cpu_pokemon.name}! Welcome your new pokemon to the crew.")
-            cpu_pokemon.health = 100
-            player.pokemon_list.append(cpu_pokemon)
-        elif run is True:
-            print("You ran from the battle!")
-    except:
-        print("Your done with this battle!")
+        cpu_move = random.choice(list(cpu_pokemon.moves.keys()))
+        pokemon.health -= cpu_pokemon.moves[cpu_move]
+        print(f"You were hit with {cpu_move} for {cpu_pokemon.moves[cpu_move]} HP! {pokemon.name} has {pokemon.health} health left.")
+        if pokemon.health <= 0:
+            pokemon.health = 0
+            use = input("Your pokemon is about to faint, do you want to use a potion? (Y or N)")
+            if player.bag.get('potion', 0) > 0 and use.upper() == 'Y':
+                use_potion(player, pokemon)
+            else:
+                rip = player.pokemon_list.pop(0)
+                print(f"{rip.name} has fainted!")
+                if player.lider is None:
+                    break
+                pokemon = player.lider
+                print(f'You will now fight with {pokemon.name}!')
+
+    if caught is False and run is False and player.pokemon_list:
+        if opp == 'cpu':
+            player.money += cpu.cash_award
+            print(f"Good job, you defeated {cpu.name}'s! You won ${cpu.cash_award}")
+
+        print(f"You defeated and won {cpu_pokemon.name}! Welcome your new pokemon to the crew.")
+        cpu_pokemon.health = 100
+        player.pokemon_list.append(cpu_pokemon)
+    elif run is True:
+        print("You ran from the battle!")
 
 
 def starting_player_info():
