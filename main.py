@@ -3,16 +3,25 @@ Created on Mon Feb 8
 A Pokemon clone for the terminal.
 @author: Andrew Alagna
 
-Ponto de entrada. As regras vivem em game.py, o mapa em grid.py e as
-entidades em models.py.
+Ponto de entrada. As regras vivem em game.py, o mapa em grid.py, as entidades
+em models.py e a conversa com o jogador em ui.py.
 """
+import argparse
+
 from rich import print
 
-import state
-from game import playing_game, starting_player_info
+from ui import playing_game, starting_player_info
 
-# 0 = cant access, 1 =  empty land, 2 = pokemon, 3 = pokeball, 4 = CPU
+
+def parse_args():
+    p = argparse.ArgumentParser(description="Pokemon Py")
+    p.add_argument("--size", type=int, default=8, help="lado do mapa quadrado")
+    p.add_argument("--seed", type=int, default=None, help="semente do mapa, para reproduzir uma partida")
+    return p.parse_args()
+
+
 if __name__ == "__main__":
-    state.player1 = starting_player_info()
-    print(f"Hello {state.player1.name}, get ready to play Pokemon Py!")
-    playing_game(state.player1)
+    args = parse_args()
+    player = starting_player_info()
+    print(f"Hello {player.name}, get ready to play Pokemon Py!")
+    playing_game(player, size=args.size, seed=args.seed)

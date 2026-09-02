@@ -16,11 +16,12 @@ class TestPokemon:
         a.moves["Tackle"] = 10
         assert b.moves == {}
 
-    def test_gender_default_eh_sorteado_uma_vez_so(self):
-        """BUG (fase 1): random.choice roda na definicao da dataclass, entao
-        todo Pokemon criado sem genero nasce com o MESMO genero na execucao
-        inteira."""
-        assert models.Pokemon().gender == models.Pokemon().gender
+    def test_gender_eh_sorteado_por_instancia(self):
+        """Corrigido na fase 1: antes o random.choice rodava uma vez so, na
+        definicao da dataclass, e todo Pokemon da execucao nascia com o mesmo
+        genero. Com default_factory o sorteio volta a ser por instancia."""
+        generos = {models.Pokemon().gender for _ in range(60)}
+        assert generos == {"Male", "Female"}
 
 
 class TestGenerateRandPokemon:
@@ -60,17 +61,23 @@ class TestPlayer:
 
 
 class TestCpuPlayer:
-    def test_name_e_fact_sao_congelados_na_definicao(self):
-        """BUG (fase 1): name e fact sao avaliados uma vez so, entao todo CPU
-        da execucao tem o mesmo nome e a mesma fala."""
-        a, b = models.CpuPlayer(), models.CpuPlayer()
-        assert a.name == b.name
-        assert a.fact == b.fact
-        assert a.fact == f"My name is {a.name}, get ready to battle me!"
+    def test_cada_cpu_sorteia_o_proprio_nome(self):
+        """Corrigido na fase 1: name era avaliado uma vez so e todo adversario
+        da execucao se chamava igual."""
+        nomes = {models.CpuPlayer().name for _ in range(80)}
+        assert len(nomes) > 1
 
-    def test_cash_award_tambem_eh_congelado(self):
-        """BUG (fase 1): o premio de todo CPU da execucao e identico."""
-        assert models.CpuPlayer().cash_award == models.CpuPlayer().cash_award
+    def test_a_fala_usa_o_nome_da_propria_instancia(self):
+        """Corrigido na fase 1: fact era montado na definicao da classe, com o
+        primeiro nome sorteado, entao o CPU se apresentava com nome alheio."""
+        for _ in range(20):
+            cpu = models.CpuPlayer()
+            assert cpu.fact == f"My name is {cpu.name}, get ready to battle me!"
+
+    def test_cada_cpu_sorteia_o_proprio_premio(self):
+        """Corrigido na fase 1: o premio de todo CPU da execucao era identico."""
+        premios = {models.CpuPlayer().cash_award for _ in range(80)}
+        assert len(premios) > 1
 
     def test_cada_cpu_tem_o_proprio_pokemon(self):
         """Corrigido na fase 0: era default mutavel compartilhado, o que
