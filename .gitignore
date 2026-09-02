@@ -1,0 +1,17 @@
+# IDE
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Ambiente virtual
+.venv/
+venv/
+
+# Saidas do benchmark (a fase 6 gera CSV em lote; o consolidado que for pro
+# relatorio entra a mao, com git add -f)
+bench/out/
