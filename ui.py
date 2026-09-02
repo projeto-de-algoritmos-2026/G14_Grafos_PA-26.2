@@ -45,16 +45,16 @@ def starting_player_info():
 
 
 def choose_starter_pokemon(starter_pokemon):
-    while starter_pokemon is None and starter_pokemon[0].upper() != 'P' and starter_pokemon[0].upper() != 'C' and \
-            starter_pokemon[0].upper() != 'S':
+    while not starter_pokemon or starter_pokemon[0].upper() not in ('P', 'C', 'S'):
         starter_pokemon = input("Please enter the first letter P (Pikachu) , C (Charmander), or S (Squirtle) to choose "
                                 "your starter pokemon")
     name = input('What do you want to name your pokemon?: ')
-    if starter_pokemon == 'P' or starter_pokemon[0].upper() == 'P':
+    inicial = starter_pokemon[0].upper()
+    if inicial == 'P':
         return Pokemon(name, random.choice(["Male", "Female"]), "Pikachu", 'Electric', {'Shock': 40, 'Tail Whip': 25})
-    elif starter_pokemon == 'C' or starter_pokemon[0].upper() == 'C':
+    elif inicial == 'C':
         return Pokemon(name, random.choice(["Male", "Female"]), "Charmander", 'Fire', {'Flamethrower': 40, 'Claw': 25})
-    elif starter_pokemon == 'S' or starter_pokemon[0].upper() == 'S':
+    else:
         return Pokemon(name, random.choice(["Male", "Female"]), "Squirtle", 'Water', {'Hydropump': 40, 'Tackle': 25})
 
 

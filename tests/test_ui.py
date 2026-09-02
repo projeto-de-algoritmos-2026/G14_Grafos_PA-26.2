@@ -61,3 +61,24 @@ def test_o_aviso_de_pokebola_saiu_das_regras(mapa, andarilho, capsys):
     mapa.celula(0, 1).occupied_with = grid.POKEBOLA
     game.mover(mapa, andarilho, "D")
     assert capsys.readouterr().out == ""
+
+
+class TestEscolhaDeInicial:
+    @pytest.mark.parametrize("tecla, especie", [
+        ("P", "Pikachu"), ("C", "Charmander"), ("S", "Squirtle"),
+        ("p", "Pikachu"), ("pikachu", "Pikachu"),
+    ])
+    def test_aceita_a_inicial_pela_primeira_letra(self, monkeypatch, tecla, especie):
+        responde(monkeypatch, tecla, "Faisca")
+        assert ui.choose_starter_pokemon(tecla).type_of_pokemon == especie
+
+    def test_repergunta_ate_a_letra_ser_valida(self, monkeypatch):
+        """Corrigido na fase 1: a condicao do while usava `and` onde precisava
+        de `or`, entao o laco nunca rodava e uma letra invalida caia direto no
+        fim da funcao, devolvendo None em silencio."""
+        responde(monkeypatch, "Z", "C", "Chama")
+        assert ui.choose_starter_pokemon("Z").type_of_pokemon == "Charmander"
+
+    def test_nunca_devolve_none(self, monkeypatch):
+        responde(monkeypatch, "9", "", "S", "Jato")
+        assert ui.choose_starter_pokemon("9") is not None
