@@ -1,7 +1,5 @@
-"""Baseline: GridSquare e Grid."""
+"""GridSquare e Grid depois do saneamento da fase 1."""
 import grid
-import models
-import state
 
 
 class TestGridSquare:
@@ -13,51 +11,97 @@ class TestGridSquare:
 
     def test_repr_de_cada_ocupacao(self):
         esperado = {
-            0: "\U0001F6B7",   # inacessivel
-            1: "\U0001F334",   # terreno livre
-            2: "\U0001F994",   # pokemon selvagem
-            3: "\U000026D4",   # pokebola
-            4: "\U0001F94A",   # CPU
-            -1: "\U00002705",  # ja visitado
+            grid.INACESSIVEL: "\U0001F6B7",
+            grid.LIVRE: "\U0001F334",
+            grid.POKEMON: "\U0001F994",
+            grid.POKEBOLA: "\U000026D4",
+            grid.CPU: "\U0001F94A",
+            grid.VISITADO: "\U00002705",
         }
         q = grid.GridSquare()
         for codigo, emoji in esperado.items():
             q.occupied_with = codigo
             assert repr(q) == emoji
 
-    def test_terrain_e_sorteado_mas_nunca_lido_pelo_jogo(self):
-        """O peso do grafo (fase 2) ja existe no jogo: o campo esta la e
-        ninguem consome. Se algum dia alguem passar a ler, este teste vira
-        documentacao do ponto de partida."""
-        assert hasattr(grid.GridSquare(), "terrain")
+    def test_acessivel_so_eh_falso_em_celula_bloqueada(self):
+        q = grid.GridSquare()
+        q.occupied_with = grid.INACESSIVEL
+        assert q.acessivel is False
+        for codigo in (grid.LIVRE, grid.POKEMON, grid.POKEBOLA, grid.CPU, grid.VISITADO):
+            q.occupied_with = codigo
+            assert q.acessivel is True
 
 
 class TestGrid:
-    def test_dimensao_e_posicao_inicial(self):
-        state.player1 = models.Player()
-        g = grid.Grid()
-        assert len(g.grid) == 8
-        assert all(len(linha) == 8 for linha in g.grid)
+    def test_tamanho_eh_parametrizavel(self):
+        """A fase 6 precisa rodar em 8, 15 e 30. Fixo em 8 o grafico do
+        benchmark sai sem forma."""
+        for n in (8, 15, 30):
+            g = grid.Grid(size=n, seed=1)
+            assert g.size == n
+            assert len(g.grid) == n
+            assert all(len(linha) == n for linha in g.grid)
+
+    def test_a_mesma_seed_reproduz_o_mapa_inteiro(self):
+        a, b = grid.Grid(size=10, seed=42), grid.Grid(size=10, seed=42)
+        for r in range(10):
+            for c in range(10):
+                assert a.grid[r][c].occupied_with == b.grid[r][c].occupied_with
+                assert a.grid[r][c].terrain == b.grid[r][c].terrain
+
+    def test_seeds_diferentes_dao_mapas_diferentes(self):
+        a, b = grid.Grid(size=10, seed=1), grid.Grid(size=10, seed=2)
+        assert any(a.grid[r][c].occupied_with != b.grid[r][c].occupied_with
+                   for r in range(10) for c in range(10))
+
+    def test_o_rng_do_grid_nao_depende_do_random_global(self):
+        """Sorteios de outras partes do programa nao podem desalinhar o mapa,
+        senao rodar varias seeds na fase 6 fica impossivel."""
+        import random
+        a = grid.Grid(size=8, seed=99)
+        [random.random() for _ in range(100)]
+        b = grid.Grid(size=8, seed=99)
+        assert [c.occupied_with for lin in a.grid for c in lin] == \
+               [c.occupied_with for lin in b.grid for c in lin]
+
+    def test_toda_celula_eh_um_gridsquare(self):
+        """Corrigido na fase 1: o original colocava um Player em grid[0][0], e
+        qualquer varredura que esperasse GridSquare em toda celula quebrava
+        ali. E o que destrava a camada de grafo da fase 2."""
+        g = grid.Grid(size=8, seed=3)
+        assert all(isinstance(cel, grid.GridSquare) for linha in g.grid for cel in linha)
+
+    def test_a_posicao_de_partida_eh_pisavel(self):
+        for semente in range(30):
+            g = grid.Grid(size=8, seed=semente)
+            assert g.celula(0, 0).acessivel
+
+    def test_posicao_inicial_e_propriedade_posicao(self):
+        g = grid.Grid(size=8, seed=3)
         assert (g.row_pos, g.col_pos) == (0, 0)
+        assert g.posicao == (0, 0)
 
-    def test_celula_inicial_guarda_um_player_e_nao_um_gridsquare(self):
-        """BUG (fase 1): `self.grid[0][0] = GridSquare.occupied_with = player1`
-        coloca um Player dentro da matriz. Qualquer varredura que espere um
-        GridSquare em toda celula quebra aqui."""
-        state.player1 = models.Player()
-        g = grid.Grid()
-        assert g.grid[0][0] is state.player1
-        assert not isinstance(g.grid[0][0], grid.GridSquare)
-
-    def test_construir_o_grid_suja_o_atributo_de_classe_do_gridsquare(self):
-        """BUG (fase 1): a mesma linha faz `GridSquare.occupied_with = player1`,
-        mudando o default de TODAS as celulas criadas depois."""
-        state.player1 = models.Player()
+    def test_construir_o_grid_nao_suja_atributo_de_classe(self):
+        """Corrigido na fase 1: `GridSquare.occupied_with = player1` mudava o
+        default de todas as celulas criadas depois."""
+        grid.Grid(size=8, seed=3)
         assert "occupied_with" not in grid.GridSquare.__dict__
-        grid.Grid()
-        assert grid.GridSquare.occupied_with is state.player1
 
-    def test_print_grid_imprime_oito_linhas(self, capsys):
-        state.player1 = models.Player()
-        grid.Grid().print_grid()
+    def test_dentro_respeita_as_bordas(self):
+        g = grid.Grid(size=8, seed=3)
+        assert g.dentro(0, 0) and g.dentro(7, 7)
+        assert not g.dentro(-1, 0)
+        assert not g.dentro(0, 8)
+
+    def test_desenhar_mostra_o_jogador_na_posicao_atual(self):
+        """O jogador saiu da matriz, entao quem o coloca na tela e o desenho."""
+        g = grid.Grid(size=8, seed=3)
+        g.row_pos, g.col_pos = 2, 3
+        linhas = g.desenhar().splitlines()
+        assert len(linhas) == 8
+        assert linhas[2].split(" ")[3] == grid.EMOJI_JOGADOR
+        assert g.desenhar().count(grid.EMOJI_JOGADOR) == 1
+
+    def test_print_grid_imprime_o_mapa(self, capsys):
+        grid.Grid(size=8, seed=3).print_grid()
         assert len(capsys.readouterr().out.strip().splitlines()) == 8

@@ -1,48 +1,88 @@
-"""Regras da partida: movimento, batalha, itens e criacao do jogador."""
+"""Regras da partida: movimento, batalha e itens.
+
+mover() nao le do teclado: recebe a direcao pronta e devolve o que aconteceu.
+Quem conversa com o jogador e ui.py. Assim o bot da fase 5 dirige o movimento
+por codigo e o benchmark da fase 6 conta metricas por passo.
+
+Ressalva de escopo: battle() ainda le do teclado. O plano so pede o
+traverse_grid nesta fase, entao a batalha ficou como estava; quando o bot
+tiver que atravessar uma celula com CPU ou pokemon selvagem, a fase 5 vai
+precisar decidir como automatizar essas escolhas.
+"""
 import random
+from dataclasses import dataclass
 
 from rich import print
 
-import state
-from grid import Grid, GridSquare
+import grid as grid_mod
 from models import CpuPlayer, Player, Pokemon, generate_rand_pokemon
 
+# Tecla -> deslocamento (linha, coluna).
+DIRECOES = {
+    'W': (-1, 0),
+    'D': (0, 1),
+    'S': (1, 0),
+    'A': (0, -1),
+}
 
-# Dont need to keep track of visited cells, but could be good practice to use the grid teq mentioned by professor.
-def traverse_grid(grid):  # 0 = cant access, 1 =  empty land, 2 = pokemon, 3 = pokeball, 4 = CPU
-    grid.print_grid()
-    dir_row, dir_col = [-1, 0, 1, 0], [0, 1, 0, -1]  # North[0], east[1], south[2], west[3]
-    made_move = False
-    while made_move is False:
-        direction = input("Do you want to go W (up), A (left), S (down), or D (right)? ")
-        if direction.upper() == 'W':  # north
-            rr = grid.row_pos + dir_row[0]
-            cc = grid.col_pos + dir_col[0]
-        if direction.upper() == 'D':
-            rr = grid.row_pos + dir_row[1]
-            cc = grid.col_pos + dir_col[1]
-        if direction.upper() == 'S':
-            rr = grid.row_pos + dir_row[2]
-            cc = grid.col_pos + dir_col[2]
-        if direction.upper() == 'A':
-            rr = grid.row_pos + dir_row[3]
-            cc = grid.col_pos + dir_col[3]
-        if rr < 0 or cc < 0 or rr >= 8 or cc >= 8 or grid.grid[rr][
-            cc].occupied_with == 0:  # 8 is size of rows and cols or edge of grid
-            direction = input("You cannot move there. Try again, Enter W/A/S/D to move in a different direction: ")
-        else:
-            if grid.grid[rr][cc].occupied_with == 4:
-                battle(state.player1, 'cpu')
-            if grid.grid[rr][cc].occupied_with == 3:
-                state.player1.bag['pokeball'] += 1
-                print("Sweet, you found a pokeball!!", "[red]")
-            if grid.grid[rr][cc].occupied_with == 2:
-                battle(state.player1, 'wild pokemon')
-            grid.grid[grid.row_pos][grid.col_pos] = GridSquare()
-            grid.grid[grid.row_pos][grid.col_pos].occupied_with = -1
-            grid.grid[rr][cc] = state.player1
-            grid.row_pos, grid.col_pos = rr, cc
-            made_move = True
+
+@dataclass
+class Movimento:
+    """O que aconteceu numa tentativa de passo.
+
+    E o contrato que o bot (fase 5) e o benchmark (fase 6) consomem: sem isso
+    os dois teriam que espiar o estado do jogador antes e depois de cada passo
+    pra descobrir se houve batalha ou quanto HP se perdeu.
+    """
+    valido: bool
+    posicao: tuple[int, int]
+    motivo: str = ""
+    batalhou: bool = False
+    pegou_pokebola: bool = False
+    hp_perdido: int = 0
+
+
+def mover(grid, player: Player, direcao: str) -> Movimento:
+    """Tenta mover o jogador uma casa na direcao dada (W, A, S ou D)."""
+    tecla = direcao.upper() if direcao else ""
+    if tecla not in DIRECOES:
+        return Movimento(False, grid.posicao, motivo="direcao desconhecida")
+
+    d_linha, d_coluna = DIRECOES[tecla]
+    rr, cc = grid.row_pos + d_linha, grid.col_pos + d_coluna
+
+    if not grid.dentro(rr, cc):
+        return Movimento(False, grid.posicao, motivo="fora do mapa")
+
+    destino = grid.celula(rr, cc)
+    if not destino.acessivel:
+        return Movimento(False, grid.posicao, motivo="celula inacessivel")
+
+    hp_antes = player.lider.health if player.lider else 0
+    batalhou = False
+    pegou_pokebola = False
+
+    if destino.occupied_with == grid_mod.CPU:
+        battle(player, 'cpu')
+        batalhou = True
+    elif destino.occupied_with == grid_mod.POKEBOLA:
+        player.bag['pokeball'] = player.bag.get('pokeball', 0) + 1
+        pegou_pokebola = True
+    elif destino.occupied_with == grid_mod.POKEMON:
+        battle(player, 'wild pokemon')
+        batalhou = True
+
+    destino.occupied_with = grid_mod.VISITADO
+    grid.row_pos, grid.col_pos = rr, cc
+
+    hp_depois = player.lider.health if player.lider else 0
+    return Movimento(
+        valido=True,
+        posicao=(rr, cc),
+        batalhou=batalhou,
+        pegou_pokebola=pegou_pokebola,
+        hp_perdido=max(0, hp_antes - hp_depois),
+    )
 
 
 def throw_pokeball(player, pokemon):
@@ -55,7 +95,7 @@ def throw_pokeball(player, pokemon):
         else:
             print(f'You did not capture {pokemon.type_of_pokemon}!')
             return False
-    elif pokemon.health < 50:
+    else:
         if random.random() <= .70:
             print(f'Congrats, you captured {pokemon.type_of_pokemon}! His name is {pokemon.name}.')
             player.pokemon_list.append(pokemon)
@@ -156,36 +196,3 @@ def battle(player: Player, opp: str):
         player.pokemon_list.append(cpu_pokemon)
     elif run is True:
         print("You ran from the battle!")
-
-
-def starting_player_info():
-    player_name = input("Hello there! What is your name?: ")
-    gender = input("What is your gender?: ")
-    nature = input("How would you describe your nature?: ")
-    starter_pokemon = input("Which pokemon do you want to start with? P - Pikachu, C - Charmander, or S - Squirtle?: ")
-    starter_pokemon = choose_starter_pokemon(starter_pokemon)
-    return Player(player_name, gender, nature, [starter_pokemon], {'potion': 3, 'pokeball': 3}, 10000)
-
-
-def choose_starter_pokemon(starter_pokemon):
-    while starter_pokemon is None and starter_pokemon[0].upper() != 'P' and starter_pokemon[0].upper() != 'C' and \
-            starter_pokemon[0].upper() != 'S':
-        starter_pokemon = input("Please enter the first letter P (Pikachu) , C (Charmander), or S (Squirtle) to choose "
-                                "your starter pokemon")
-    name = input('What do you want to name your pokemon?: ')
-    if starter_pokemon == 'P' or starter_pokemon[0].upper() == 'P':
-        return Pokemon(name, random.choice(["Male", "Female"]), "Pikachu", 'Electric', {'Shock': 40, 'Tail Whip': 25})
-    elif starter_pokemon == 'C' or starter_pokemon[0].upper() == 'C':
-        return Pokemon(name, random.choice(["Male", "Female"]), "Charmander", 'Fire', {'Flamethrower': 40, 'Claw': 25})
-    elif starter_pokemon == 'S' or starter_pokemon[0].upper() == 'S':
-        return Pokemon(name, random.choice(["Male", "Female"]), "Squirtle", 'Water', {'Hydropump': 40, 'Tackle': 25})
-
-
-def playing_game(player):
-    grid = Grid()
-    while 0 < len(player.pokemon_list) < 4:
-        traverse_grid(grid)
-    if len(player.pokemon_list) >= 4:
-        print(f"Game over! You captured 4 pokemon {player.poke_list_names()}. Thanks for playing!", ":smile:")
-    else:
-        print("Game over! You lost all of your pokemon. Thanks for playing!", ":smile:")
