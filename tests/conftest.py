@@ -11,12 +11,15 @@ import random
 
 import pytest
 
-import main
+import grid
+import models
+import state
 
 
 @pytest.fixture(autouse=True)
 def limpa_estado_global():
-    """main.py guarda estado em variavel global e em atributo de classe.
+    """O jogo guarda estado em variavel global (state.player1) e em atributo
+    de classe.
 
     O Grid() faz `GridSquare.occupied_with = player1`, o que suja a classe
     para todos os testes seguintes. Limpamos antes e depois de cada teste.
@@ -27,21 +30,21 @@ def limpa_estado_global():
 
 
 def _reset():
-    if hasattr(main, "player1"):
-        del main.player1
-    if "occupied_with" in main.GridSquare.__dict__:
-        del main.GridSquare.occupied_with
+    if hasattr(state, "player1"):
+        del state.player1
+    if "occupied_with" in grid.GridSquare.__dict__:
+        del grid.GridSquare.occupied_with
 
 
 @pytest.fixture
 def pikachu():
-    return main.Pokemon("Faisca", "Male", "Pikachu", "Electric",
+    return models.Pokemon("Faisca", "Male", "Pikachu", "Electric",
                         {"Shock": 40, "Tail Whip": 25})
 
 
 @pytest.fixture
 def jogador(pikachu):
-    return main.Player("Lucas", "Male", "Fun", [pikachu],
+    return models.Player("Lucas", "Male", "Fun", [pikachu],
                        {"potion": 3, "pokeball": 3}, 10000)
 
 
