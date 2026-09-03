@@ -9,10 +9,14 @@ import ui
 
 @pytest.fixture
 def mapa():
+    """8x8 todo pisavel. O terreno vai fixo em concreto desde a fase 2: agua
+    passou a ser recusada por mover(), e estes testes falam de prompt, nao de
+    terreno."""
     g = grid.Grid(size=8, seed=1)
     for linha in g.grid:
         for celula in linha:
             celula.occupied_with = grid.LIVRE
+            celula.terrain = grid.CONCRETO
     g.row_pos, g.col_pos = 0, 0
     return g
 

@@ -36,6 +36,10 @@ class Player:
     pokemon_list: list[Pokemon] = field(default_factory=list)
     bag: dict[str, int] = field(default_factory=dict)
     money: int = 10000
+    # Surf e capacidade permanente, nao item consumivel, entao e campo do
+    # Player e nao entrada da bag. Ligar surf nao muda o peso da agua: cria as
+    # arestas de agua, que sem ele nao existem. Ver graph/adapter.py.
+    surf: bool = False
 
     def poke_list_names(self):
         names = []

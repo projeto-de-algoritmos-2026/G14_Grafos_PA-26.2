@@ -39,6 +39,7 @@ class Movimento:
     motivo: str = ""
     batalhou: bool = False
     pegou_pokebola: bool = False
+    pegou_surf: bool = False
     hp_perdido: int = 0
 
 
@@ -57,10 +58,16 @@ def mover(grid, player: Player, direcao: str) -> Movimento:
     destino = grid.celula(rr, cc)
     if not destino.acessivel:
         return Movimento(False, grid.posicao, motivo="celula inacessivel")
+    # Agua e recusada aqui desde a fase 2. Antes o jogo deixava andar em cima
+    # dela (acessivel so olha o conteudo da celula, e agua e terreno), o que
+    # faria o bot planejar rota por um caminho que o grafo diz nao existir.
+    if not destino.pisavel(player.surf):
+        return Movimento(False, grid.posicao, motivo="agua sem surf")
 
     hp_antes = player.lider.health if player.lider else 0
     batalhou = False
     pegou_pokebola = False
+    pegou_surf = False
 
     if destino.occupied_with == grid_mod.CPU:
         battle(player, 'cpu')
@@ -68,6 +75,9 @@ def mover(grid, player: Player, direcao: str) -> Movimento:
     elif destino.occupied_with == grid_mod.POKEBOLA:
         player.bag['pokeball'] = player.bag.get('pokeball', 0) + 1
         pegou_pokebola = True
+    elif destino.occupied_with == grid_mod.SURF:
+        player.surf = True
+        pegou_surf = True
     elif destino.occupied_with == grid_mod.POKEMON:
         battle(player, 'wild pokemon')
         batalhou = True
@@ -81,6 +91,7 @@ def mover(grid, player: Player, direcao: str) -> Movimento:
         posicao=(rr, cc),
         batalhou=batalhou,
         pegou_pokebola=pegou_pokebola,
+        pegou_surf=pegou_surf,
         hp_perdido=max(0, hp_antes - hp_depois),
     )
 

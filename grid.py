@@ -9,6 +9,7 @@ LIVRE = 1
 POKEMON = 2
 POKEBOLA = 3
 CPU = 4
+SURF = 5
 VISITADO = -1
 
 EMOJI = {
@@ -17,19 +18,27 @@ EMOJI = {
     POKEMON: "\U0001F994",
     POKEBOLA: "\U000026D4",
     CPU: "\U0001F94A",
+    SURF: "\U0001F3C4",
     VISITADO: "\U00002705",
 }
 
 EMOJI_JOGADOR = "\U0001FAE1"
 
-# Peso de terreno usado pelo custo do grafo na fase 2. O jogo ja sorteava o
-# terreno e nunca lia esse campo.
-TERRENOS = ['grass', 'water', 'concrete']
+# Terreno. O jogo ja sorteava esse campo e nunca o lia; a fase 2 passa a
+# usa-lo como peso do grafo (graph/cost.py) e, no caso da agua, como o que
+# decide se a aresta existe (graph/adapter.py).
+GRAMA = 'grass'
+AGUA = 'water'
+CONCRETO = 'concrete'
+TERRENOS = [GRAMA, AGUA, CONCRETO]
 
 
 class GridSquare:
-    OPCOES = [INACESSIVEL, LIVRE, POKEMON, POKEBOLA, CPU]
-    DISTRIBUICAO = [.02, .60, .13, .05, .10]
+    # SURF entrou na fase 2: e o item que concede a habilidade de atravessar
+    # agua. Ele tinha que ser item de mapa (decisao do Lucas) justamente pra
+    # que o grafo mude de forma durante a partida, e nao so de peso.
+    OPCOES = [INACESSIVEL, LIVRE, POKEMON, POKEBOLA, CPU, SURF]
+    DISTRIBUICAO = [.02, .58, .13, .05, .10, .02]
 
     def __init__(self, rng=None):
         """rng permite reproduzir um mapa: veja Grid(size, seed)."""
@@ -39,7 +48,21 @@ class GridSquare:
 
     @property
     def acessivel(self):
+        """Se o CONTEUDO da celula permite entrar. Nao olha terreno."""
         return self.occupied_with != INACESSIVEL
+
+    @property
+    def e_agua(self):
+        return self.terrain == AGUA
+
+    def pisavel(self, surf=False):
+        """A unica definicao de passabilidade do projeto.
+
+        mover() (game.py) e vizinhos() (graph/adapter.py) chamam este metodo.
+        Se cada um tivesse a sua propria regra, o bot planejaria rota que o
+        jogo recusa, ou desistiria de rota que o jogo aceita.
+        """
+        return self.acessivel and (surf or not self.e_agua)
 
     def __repr__(self):
         return EMOJI.get(self.occupied_with, "")
@@ -57,8 +80,11 @@ class Grid:
         self.rng = random.Random(seed)
         self.grid = [[GridSquare(self.rng) for _ in range(size)] for _ in range(size)]
         # A posicao de partida precisa ser pisavel, e o jogador NAO mora dentro
-        # da matriz: a posicao dele vive so em row_pos/col_pos.
+        # da matriz: a posicao dele vive so em row_pos/col_pos. Desde a fase 2
+        # o terreno tambem e forcado: agua na origem prenderia o jogador no
+        # canto, porque ele comeca sem surf.
         self.grid[0][0].occupied_with = LIVRE
+        self.grid[0][0].terrain = CONCRETO
         self.row_pos, self.col_pos = 0, 0
 
     @property
