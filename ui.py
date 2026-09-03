@@ -31,6 +31,8 @@ def passo_do_jogador(grid, player):
         if movimento.valido:
             if movimento.pegou_pokebola:
                 print("Sweet, you found a pokeball!!", "[red]")
+            if movimento.pegou_surf:
+                print("You learned Surf! You can cross water now.", "[cyan]")
             return movimento
         prompt = PROMPT_ERRO
 
