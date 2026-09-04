@@ -1,6 +1,8 @@
-"""Escolha de objetivos alcançáveis para o bot."""
+"""Escolha e ordenação de objetivos alcançáveis para o bot."""
 
 from dataclasses import dataclass
+from itertools import permutations
+import math
 
 import grid as grid_mod
 
@@ -52,3 +54,38 @@ def pontuar_alvos(origem, mapa, estado) -> list[Objetivo]:
 def selecionar_alvos(origem, mapa, estado, limite=3) -> list[tuple[int, int]]:
     """Seleciona até ``limite`` objetivos pela maior utilidade por custo."""
     return [objetivo.posicao for objetivo in pontuar_alvos(origem, mapa, estado)[:limite]]
+
+
+def matriz_distancias(pontos, mapa, estado) -> dict:
+    """Calcula os menores custos entre cada par de pontos do planejamento."""
+    matriz = {}
+    for origem in pontos:
+        distancias, _ = dijkstra_distancias(origem, mapa, estado)
+        matriz[origem] = {
+            destino: distancias.get(destino, math.inf)
+            for destino in pontos
+        }
+    return matriz
+
+
+def melhor_ordem(origem, alvos, mapa, estado) -> tuple[list[tuple[int, int]], float, dict]:
+    """Escolhe a permutação de alvos com menor custo total desde a origem."""
+    pontos = [origem, *alvos]
+    matriz = matriz_distancias(pontos, mapa, estado)
+    melhor = None
+
+    for permutacao in permutations(alvos):
+        sequencia = (origem, *permutacao)
+        custo = sum(
+            matriz[anterior][proximo]
+            for anterior, proximo in zip(sequencia, sequencia[1:])
+        )
+        if math.isinf(custo):
+            continue
+        chave = (custo, permutacao)
+        if melhor is None or chave < melhor[0]:
+            melhor = (chave, list(permutacao), custo)
+
+    if melhor is None:
+        return [], math.inf, matriz
+    return melhor[1], melhor[2], matriz

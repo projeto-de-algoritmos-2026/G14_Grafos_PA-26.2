@@ -1,7 +1,15 @@
 """Testes da escolha de objetivos."""
 
+import math
+
 import grid
-from bot.objectives import pontuar_alvos, selecionar_alvos, utilidade
+from bot.objectives import (
+    melhor_ordem,
+    matriz_distancias,
+    pontuar_alvos,
+    selecionar_alvos,
+    utilidade,
+)
 from graph.state import Estado
 
 
@@ -48,3 +56,41 @@ def test_surf_nao_e_objetivo_depois_de_obtido():
     mapa.celula(0, 1).occupied_with = grid.SURF
 
     assert utilidade(mapa.celula(0, 1), Estado(hp_lider=100, surf=True)) == 0
+
+
+def test_matriz_de_distancias_tem_origem_e_alvos():
+    mapa = mapa_de_teste()
+    pontos = [(0, 0), (0, 1), (2, 2)]
+
+    matriz = matriz_distancias(pontos, mapa, Estado(hp_lider=100))
+
+    assert matriz[(0, 0)][(0, 1)] == 1
+    assert matriz[(0, 1)][(2, 2)] == 3
+    assert matriz[(2, 2)][(2, 2)] == 0
+
+
+def test_melhor_ordem_testa_as_permutacoes():
+    mapa = mapa_de_teste()
+    origem = (0, 0)
+    alvos = [(0, 2), (2, 0), (2, 2)]
+
+    ordem, custo, matriz = melhor_ordem(
+        origem, alvos, mapa, Estado(hp_lider=100)
+    )
+
+    assert ordem == [(0, 2), (2, 2), (2, 0)]
+    assert custo == 6
+    assert len(matriz) == 4
+
+
+def test_melhor_ordem_ignora_permutacoes_sem_caminho():
+    mapa = mapa_de_teste()
+    mapa.celula(1, 1).terrain = grid.AGUA
+    alvos = [(0, 2), (2, 0), (1, 1)]
+
+    ordem, custo, _ = melhor_ordem(
+        (0, 0), alvos, mapa, Estado(hp_lider=100, surf=False)
+    )
+
+    assert ordem == []
+    assert math.isinf(custo)
