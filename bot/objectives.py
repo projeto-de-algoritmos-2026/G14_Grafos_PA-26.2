@@ -89,3 +89,14 @@ def melhor_ordem(origem, alvos, mapa, estado) -> tuple[list[tuple[int, int]], fl
     if melhor is None:
         return [], math.inf, matriz
     return melhor[1], melhor[2], matriz
+
+
+def planejar_visita(origem, mapa, estado, limite=3) -> tuple[list[tuple[int, int]], float, dict]:
+    """Seleciona e ordena os objetivos usando o estado atual do jogador.
+
+    A função deve ser chamada novamente depois que um objetivo for alcançado
+    ou que o estado mudar. Células já visitadas perdem sua utilidade, e uma
+    nova capacidade como Surf pode criar novas rotas no grafo.
+    """
+    alvos = selecionar_alvos(origem, mapa, estado, limite=limite)
+    return melhor_ordem(origem, alvos, mapa, estado)

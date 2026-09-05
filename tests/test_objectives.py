@@ -6,6 +6,7 @@ import grid
 from bot.objectives import (
     melhor_ordem,
     matriz_distancias,
+    planejar_visita,
     pontuar_alvos,
     selecionar_alvos,
     utilidade,
@@ -94,3 +95,36 @@ def test_melhor_ordem_ignora_permutacoes_sem_caminho():
 
     assert ordem == []
     assert math.isinf(custo)
+
+
+def test_replanejamento_remove_objetivo_alcancado():
+    mapa = mapa_de_teste()
+    mapa.celula(0, 1).occupied_with = grid.POKEBOLA
+    mapa.celula(0, 2).occupied_with = grid.POKEMON
+    estado = Estado(hp_lider=100)
+
+    primeira, _, _ = planejar_visita((0, 0), mapa, estado, limite=2)
+    mapa.celula(*primeira[0]).occupied_with = grid.VISITADO
+    segunda, _, _ = planejar_visita(primeira[0], mapa, estado, limite=2)
+
+    assert primeira[0] == (0, 1)
+    assert (0, 1) not in segunda
+    assert segunda == [(0, 2)]
+
+
+def test_replanejamento_com_surf_encontra_novo_territorio():
+    mapa = mapa_de_teste()
+    mapa.celula(0, 1).terrain = grid.AGUA
+    mapa.celula(0, 1).occupied_with = grid.SURF
+    mapa.celula(0, 2).terrain = grid.AGUA
+    mapa.celula(0, 2).occupied_with = grid.POKEMON
+
+    sem_surf, _, _ = planejar_visita(
+        (0, 0), mapa, Estado(hp_lider=100, surf=False)
+    )
+    com_surf, _, _ = planejar_visita(
+        (0, 0), mapa, Estado(hp_lider=100, surf=True)
+    )
+
+    assert sem_surf == []
+    assert com_surf == [(0, 2)]
