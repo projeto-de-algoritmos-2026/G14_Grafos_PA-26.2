@@ -91,3 +91,25 @@ def dijkstra(origem, destino, grid, estado):
                 heapq.heappush(fila, (novo_custo, next(ordem), vizinho))
 
     return [], math.inf, nos_expandidos
+
+
+def dijkstra_distancias(origem, grid, estado):
+    """Calcula o menor custo da origem para todas as posições alcançáveis."""
+    distancias = {origem: 0}
+    ordem = count()
+    fila = [(0, next(ordem), origem)]
+    nos_expandidos = 0
+
+    while fila:
+        custo_atual, _, atual = heapq.heappop(fila)
+        if custo_atual != distancias.get(atual):
+            continue
+
+        nos_expandidos += 1
+        for vizinho, custo in arestas(atual, grid, estado):
+            novo_custo = custo_atual + custo
+            if novo_custo < distancias.get(vizinho, math.inf):
+                distancias[vizinho] = novo_custo
+                heapq.heappush(fila, (novo_custo, next(ordem), vizinho))
+
+    return distancias, nos_expandidos

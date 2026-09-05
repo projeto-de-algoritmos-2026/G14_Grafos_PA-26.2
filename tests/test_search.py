@@ -3,7 +3,7 @@
 import math
 
 import grid
-from graph.search import bfs_path, dijkstra, dfs_path
+from graph.search import bfs_path, dijkstra, dijkstra_distancias, dfs_path
 from graph.state import Estado
 
 
@@ -76,3 +76,28 @@ def test_origem_igual_ao_destino():
         assert algoritmo((1, 1), (1, 1), mapa, Estado(hp_lider=100)) == (
             [(1, 1)], 0, 1
         )
+
+
+def test_dijkstra_distancias_calcula_todo_o_mapa():
+    mapa = mapa_de_teste()
+
+    distancias, nos_expandidos = dijkstra_distancias(
+        (0, 0), mapa, Estado(hp_lider=100)
+    )
+
+    assert distancias[(0, 0)] == 0
+    assert distancias[(2, 2)] == 4
+    assert len(distancias) == 9
+    assert nos_expandidos == 9
+
+
+def test_dijkstra_distancias_omite_posicoes_inalcancaveis():
+    mapa = mapa_de_teste()
+    for linha in mapa.grid:
+        linha[1].terrain = grid.AGUA
+
+    distancias, _ = dijkstra_distancias(
+        (0, 0), mapa, Estado(hp_lider=100, surf=False)
+    )
+
+    assert set(distancias) == {(0, 0), (1, 0), (2, 0)}
