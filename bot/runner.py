@@ -20,7 +20,9 @@ class ResultadoBot:
     motivo_parada: str = ""
 
 
-def executar_bot(mapa, player, limite_objetivos=3, max_passos=None) -> ResultadoBot:
+def executar_bot(
+    mapa, player, limite_objetivos=3, max_passos=None, visual: bool = False
+) -> ResultadoBot:
     """Planeja, executa um objetivo e replaneja ate a partida parar."""
     resultado = ResultadoBot()
     passos = 0
@@ -45,7 +47,14 @@ def executar_bot(mapa, player, limite_objetivos=3, max_passos=None) -> Resultado
             resultado.motivo_parada = "objetivo sem caminho"
             break
 
-        movimentos = executar_caminho(mapa, player, caminho, automatico=True)
+        if visual:
+            print(f"\nPlano: {mapa.posicao} -> {destino}")
+            print(f"Caminho: {caminho}")
+            mapa.print_grid()
+
+        movimentos = executar_caminho(
+            mapa, player, caminho, automatico=True, visual=visual
+        )
         resultado.movimentos.extend(movimentos)
         passos += len(movimentos)
 
@@ -67,7 +76,9 @@ def executar_bot(mapa, player, limite_objetivos=3, max_passos=None) -> Resultado
     return resultado
 
 
-def jogar_com_bot(player, size=8, seed=None, max_passos=None) -> ResultadoBot:
+def jogar_com_bot(
+    player, size=8, seed=None, max_passos=None, visual: bool = False
+) -> ResultadoBot:
     """Cria o mapa e executa uma partida controlada pelo bot."""
     mapa = Grid(size=size, seed=seed)
-    return executar_bot(mapa, player, max_passos=max_passos)
+    return executar_bot(mapa, player, max_passos=max_passos, visual=visual)

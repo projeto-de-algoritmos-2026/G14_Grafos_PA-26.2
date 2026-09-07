@@ -23,6 +23,14 @@ def test_flag_bot(monkeypatch):
     assert args.seed == 42
 
 
+def test_flag_visual(monkeypatch):
+    monkeypatch.setattr("sys.argv", ["main.py", "--bot", "--visual"])
+
+    args = main.parse_args()
+
+    assert args.visual is True
+
+
 def test_bot_e_human_nao_podem_ser_usados_juntos(monkeypatch):
     monkeypatch.setattr("sys.argv", ["main.py", "--bot", "--human"])
 

@@ -21,6 +21,7 @@ def parse_args():
     modos = p.add_mutually_exclusive_group()
     modos.add_argument("--bot", action="store_true", help="joga automaticamente")
     modos.add_argument("--human", action="store_true", help="joga com comandos no terminal")
+    p.add_argument("--visual", action="store_true", help="mostra o mapa a cada passo do bot")
     return p.parse_args()
 
 
@@ -29,7 +30,9 @@ if __name__ == "__main__":
     player = starting_player_info()
     print(f"Hello {player.name}, get ready to play Pokemon Py!")
     if args.bot:
-        resultado = jogar_com_bot(player, size=args.size, seed=args.seed)
+        resultado = jogar_com_bot(
+            player, size=args.size, seed=args.seed, visual=args.visual
+        )
         print(
             f"Bot finished: {len(resultado.objetivos_visitados)} objectives, "
             f"{len(resultado.movimentos)} steps ({resultado.motivo_parada})."
