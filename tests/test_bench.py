@@ -9,7 +9,7 @@ import math
 
 import pytest
 
-from bench import common, partidas, rotas
+from bench import charts, common, partidas, rotas
 from graph.search import dijkstra_distancias
 
 
@@ -126,3 +126,30 @@ def test_resumo_de_partidas_conta_as_partidas_sem_objetivo():
         assert item["partidas_sem_objetivo"] == sum(
             1 for l in do_algoritmo if l["objetivos_concluidos"] == 0
         )
+
+
+def test_grafico_sai_com_uma_linha_por_serie(tmp_path):
+    series = {"dfs": [(8, 10), (15, 20)], "dijkstra": [(8, 5), (15, 9)]}
+    caminho = charts.grafico_linhas("t", "x", "y", series, tmp_path / "g.svg")
+    conteudo = caminho.read_text(encoding="utf-8")
+
+    assert conteudo.startswith("<svg") and conteudo.rstrip().endswith("</svg>")
+    assert conteudo.count("<polyline") == 2
+    assert charts.CORES["dijkstra"] in conteudo
+
+
+def test_grafico_recusa_serie_vazia(tmp_path):
+    with pytest.raises(ValueError):
+        charts.grafico_linhas("t", "x", "y", {}, tmp_path / "g.svg")
+
+
+def test_gerar_graficos_le_os_resumos_gravados(tmp_path):
+    linhas, _ = rotas.rodar(tamanhos=(6, 8), seeds=3)
+    common.escrever_csv(tmp_path / "rotas_resumo.csv", rotas.CAMPOS_RESUMO,
+                        rotas.resumir(linhas))
+
+    gerados = charts.gerar(tmp_path)
+
+    assert [caminho.name for caminho in gerados] == [
+        "rotas-custo.svg", "rotas-passos.svg", "rotas-nos.svg"
+    ]
