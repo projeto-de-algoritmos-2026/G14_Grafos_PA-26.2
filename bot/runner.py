@@ -27,6 +27,10 @@ def executar_bot(
     resultado = ResultadoBot()
     passos = 0
 
+    if visual:
+        print("Mapa inicial:")
+        mapa.print_grid()
+
     while player.pokemon_list and len(player.pokemon_list) < 4:
         if max_passos is not None and passos >= max_passos:
             resultado.motivo_parada = "limite de passos"
@@ -39,6 +43,8 @@ def executar_bot(
         resultado.replanejamentos += 1
         if not ordem:
             resultado.motivo_parada = "sem objetivos alcançaveis"
+            if visual:
+                print("Nenhum objetivo alcançavel a partir da posicao atual.")
             break
 
         destino = ordem[0]

@@ -24,3 +24,12 @@ def test_modo_visual_mostra_plano_e_mapa(mapa, jogador, capsys):
     saida = capsys.readouterr().out
     assert "Plano: (0, 0) -> (0, 1)" in saida
     assert grid.EMOJI_JOGADOR in saida
+
+
+def test_modo_visual_mostra_mapa_mesmo_sem_objetivos(mapa, jogador, capsys):
+    executar_bot(mapa, jogador, visual=True)
+
+    saida = capsys.readouterr().out
+    assert "Mapa inicial:" in saida
+    assert "Nenhum objetivo alcançavel" in saida
+    assert grid.EMOJI_JOGADOR in saida
