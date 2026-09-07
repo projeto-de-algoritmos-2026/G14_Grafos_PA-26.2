@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 
+from grid import Grid
 from graph.search import dijkstra
 from graph.state import Estado
 
@@ -64,3 +65,9 @@ def executar_bot(mapa, player, limite_objetivos=3, max_passos=None) -> Resultado
             resultado.motivo_parada = "quatro pokemon capturados"
 
     return resultado
+
+
+def jogar_com_bot(player, size=8, seed=None, max_passos=None) -> ResultadoBot:
+    """Cria o mapa e executa uma partida controlada pelo bot."""
+    mapa = Grid(size=size, seed=seed)
+    return executar_bot(mapa, player, max_passos=max_passos)
