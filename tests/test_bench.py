@@ -1,0 +1,92 @@
+"""Testes do benchmark da fase 6.
+
+Os testes rodam numa grade minuscula de proposito: o que precisa ser garantido
+e o contrato (colunas do CSV, uma linha por algoritmo, agregacao correta,
+descarte registrado em vez de sumido), nao o tempo da grade real.
+"""
+
+import math
+
+import pytest
+
+from bench import common, rotas
+from graph.search import dijkstra_distancias
+
+
+def test_media_ignora_infinito():
+    """Rota sem caminho guarda custo infinito, e infinito contamina a media
+    inteira. A coluna `execucoes` do resumo e quem conta essas linhas."""
+    linhas = [{"custo": "10"}, {"custo": str(math.inf)}, {"custo": "20"}]
+
+    assert common.media(linhas, "custo") == 15.0
+
+
+def test_csv_ida_e_volta(tmp_path):
+    linhas = [{"a": 1, "b": "x"}, {"a": 2, "b": "y"}]
+    caminho = common.escrever_csv(tmp_path / "t.csv", ["a", "b"], linhas)
+
+    assert common.ler_csv(caminho) == [{"a": "1", "b": "x"}, {"a": "2", "b": "y"}]
+
+
+def test_sortear_destinos_e_reproduzivel_e_fica_no_componente_sem_surf():
+    from grid import Grid
+
+    mapa = Grid(size=8, seed=7)
+    primeiro = rotas.sortear_destinos(mapa)
+    segundo = rotas.sortear_destinos(Grid(size=8, seed=7))
+
+    assert primeiro == segundo
+    distancias, _ = dijkstra_distancias(rotas.ORIGEM, mapa, rotas.ESTADOS["hp100"])
+    assert all(destino in distancias for destino in primeiro)
+
+
+def test_rotas_gera_uma_linha_por_algoritmo_e_estado():
+    linhas, _ = rotas.rodar(tamanhos=(6,), seeds=2)
+
+    assert linhas, "a grade minima precisa produzir alguma medicao"
+    assert set(linha["algoritmo"] for linha in linhas) == set(common.ALGORITMOS)
+    esperado = len(common.ALGORITMOS) * len(rotas.ESTADOS)
+    por_destino = common.agrupar(linhas, ["tamanho", "seed", "destino"])
+    assert all(len(grupo) == esperado for grupo in por_destino.values())
+
+
+def test_rotas_registra_mapa_com_origem_ilhada_em_vez_de_ignorar():
+    # A seed 0 em 8x8 nasce com a origem cercada de agua: sem surf o
+    # componente e so (0,0) e nao ha destino possivel.
+    linhas, descartes = rotas.rodar(tamanhos=(8,), seeds=1)
+
+    assert linhas == []
+    assert descartes == [
+        {"tamanho": 8, "seed": 0,
+         "motivo": "origem sem componente alcancavel sem surf"}
+    ]
+
+
+def test_dijkstra_nunca_custa_mais_que_bfs_ou_dfs_na_mesma_rota():
+    """Primeira das duas invariantes que sustentam o relatorio."""
+    linhas, _ = rotas.rodar(tamanhos=(8, 15), seeds=4)
+
+    for grupo in common.agrupar(linhas, ["tamanho", "seed", "destino", "estado"]).values():
+        custos = {linha["algoritmo"]: linha["custo"] for linha in grupo}
+        assert custos["dijkstra"] <= custos["bfs"]
+        assert custos["dijkstra"] <= custos["dfs"]
+
+
+def test_bfs_nunca_da_mais_passos_que_dijkstra_ou_dfs():
+    """Segunda invariante. Junto com a anterior, e a tese do trabalho virada
+    em teste: quem ganha em passos nao e quem ganha em custo."""
+    linhas, _ = rotas.rodar(tamanhos=(8, 15), seeds=4)
+
+    for grupo in common.agrupar(linhas, ["tamanho", "seed", "destino", "estado"]).values():
+        passos = {linha["algoritmo"]: linha["passos"] for linha in grupo}
+        assert passos["bfs"] <= passos["dijkstra"]
+        assert passos["bfs"] <= passos["dfs"]
+
+
+def test_resumo_de_rotas_agrega_por_tamanho_estado_e_algoritmo():
+    linhas, _ = rotas.rodar(tamanhos=(6,), seeds=2)
+    resumo = rotas.resumir(linhas)
+
+    assert len(resumo) == len(rotas.ESTADOS) * len(common.ALGORITMOS)
+    assert sum(item["execucoes"] for item in resumo) == len(linhas)
+    assert set(resumo[0]) == set(rotas.CAMPOS_RESUMO)
