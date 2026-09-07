@@ -37,4 +37,9 @@ def executar_caminho(
             mapa.print_grid()
         if not movimento.valido:
             break
+        # Time zerado encerra a partida: seguir o caminho so acumularia passo
+        # sem jogo. Quem decide o que fazer a seguir e o runner, olhando
+        # player.pokemon_list.
+        if not player.pokemon_list:
+            break
     return movimentos

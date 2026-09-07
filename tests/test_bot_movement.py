@@ -1,7 +1,10 @@
 """Testes da execucao de caminhos pelo bot."""
 
+from unittest import mock
+
 import pytest
 
+import game
 import grid
 
 from bot.movement import executar_caminho
@@ -41,3 +44,24 @@ def test_para_no_primeiro_passo_invalido(mapa, jogador):
 
 def test_caminho_com_uma_posicao_nao_executa_passo(mapa, jogador):
     assert executar_caminho(mapa, jogador, [(0, 0)]) == []
+
+def test_executar_caminho_para_quando_o_time_acaba(jogador):
+    """Sem pokemon a partida acabou: o executor nao segue andando o resto da
+    rota. Quem decide o proximo passo e o runner."""
+    mapa = grid.Grid(size=3, seed=1)
+    for linha in mapa.grid:
+        for celula in linha:
+            celula.occupied_with = grid.LIVRE
+            celula.terrain = grid.CONCRETO
+
+    def derruba_o_time(*args, **kwargs):
+        jogador.pokemon_list.clear()
+
+    mapa.celula(0, 1).occupied_with = grid.CPU
+    with mock.patch.object(game, "battle", side_effect=derruba_o_time):
+        movimentos = executar_caminho(
+            mapa, jogador, [(0, 0), (0, 1), (0, 2)], automatico=True
+        )
+
+    assert len(movimentos) == 1
+    assert mapa.posicao == (0, 1)

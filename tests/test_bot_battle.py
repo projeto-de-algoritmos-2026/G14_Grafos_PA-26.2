@@ -45,3 +45,12 @@ def test_mover_pode_atravessar_batalha_no_modo_automatico(mapa, jogador, monkeyp
     assert movimento.valido is True
     assert movimento.batalhou is True
     assert mapa.posicao == (0, 1)
+
+def test_battle_sem_time_nao_estoura(jogador):
+    """O ultimo pokemon pode desmaiar no meio do caminho e o passo seguinte
+    cair numa celula de CPU. Antes isso levantava IndexError em
+    pokemon_list[0]; achado rodando a grade da fase 6."""
+    jogador.pokemon_list.clear()
+
+    assert game.battle(jogador, "cpu", automatico=True) is None
+    assert jogador.pokemon_list == []

@@ -146,6 +146,13 @@ def battle(player: Player, opp: str, automatico: bool = False):
     automatizar a escolha de acao, e esse ponto que precisa deixar de assumir
     a quantidade de golpes.
     """
+    # Sem time nao ha batalha. O caso aparece quando o ultimo pokemon desmaia
+    # no meio de um caminho e o passo seguinte cai numa celula de CPU: o
+    # original ia direto em pokemon_list[0] e estourava IndexError. Achado
+    # rodando a grade da fase 6, e alcancavel tambem numa partida com --bot.
+    if not player.pokemon_list:
+        return
+
     cpu = None
     if opp == 'cpu':
         cpu = CpuPlayer()
