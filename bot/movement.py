@@ -25,11 +25,11 @@ def caminho_para_direcoes(caminho: list[tuple[int, int]]) -> list[str]:
     return direcoes
 
 
-def executar_caminho(mapa, player, caminho) -> list[game.Movimento]:
+def executar_caminho(mapa, player, caminho, automatico: bool = False) -> list[game.Movimento]:
     """Executa um caminho e devolve o resultado de cada tentativa de passo."""
     movimentos = []
     for direcao in caminho_para_direcoes(caminho):
-        movimento = game.mover(mapa, player, direcao)
+        movimento = game.mover(mapa, player, direcao, automatico=automatico)
         movimentos.append(movimento)
         if not movimento.valido:
             break

@@ -43,7 +43,7 @@ class Movimento:
     hp_perdido: int = 0
 
 
-def mover(grid, player: Player, direcao: str) -> Movimento:
+def mover(grid, player: Player, direcao: str, automatico: bool = False) -> Movimento:
     """Tenta mover o jogador uma casa na direcao dada (W, A, S ou D)."""
     tecla = direcao.upper() if direcao else ""
     if tecla not in DIRECOES:
@@ -70,7 +70,10 @@ def mover(grid, player: Player, direcao: str) -> Movimento:
     pegou_surf = False
 
     if destino.occupied_with == grid_mod.CPU:
-        battle(player, 'cpu')
+        if automatico:
+            battle(player, 'cpu', automatico=True)
+        else:
+            battle(player, 'cpu')
         batalhou = True
     elif destino.occupied_with == grid_mod.POKEBOLA:
         player.bag['pokeball'] = player.bag.get('pokeball', 0) + 1
@@ -79,7 +82,10 @@ def mover(grid, player: Player, direcao: str) -> Movimento:
         player.surf = True
         pegou_surf = True
     elif destino.occupied_with == grid_mod.POKEMON:
-        battle(player, 'wild pokemon')
+        if automatico:
+            battle(player, 'wild pokemon', automatico=True)
+        else:
+            battle(player, 'wild pokemon')
         batalhou = True
 
     destino.occupied_with = grid_mod.VISITADO
@@ -125,7 +131,7 @@ def use_potion(player: Player, pokemon: Pokemon):
         print("You do not have any more potions!")
 
 
-def battle(player: Player, opp: str):
+def battle(player: Player, opp: str, automatico: bool = False):
     """Batalha contra um CPU ou um pokemon selvagem.
 
     O `except:` nu que existia aqui engolia qualquer erro e imprimia
@@ -155,7 +161,12 @@ def battle(player: Player, opp: str):
     # O original testava `player.pokemon_list is not None`, que nunca e falso:
     # a lista fica vazia, nao vira None. Ficar sem pokemon nao encerrava o laco.
     while player.pokemon_list and cpu_pokemon.health > 0:
-        if opp == 'cpu': move = input(f"Do you want to use move 1 {next(iter(pokemon.moves))} (1), move 2 {list(pokemon.moves.keys())[1]} (2), use a potion (P), switch pokemon (S), or run (R)? ")
+        if automatico:
+            if not pokemon.moves:
+                run = True
+                break
+            move = '1'
+        elif opp == 'cpu': move = input(f"Do you want to use move 1 {next(iter(pokemon.moves))} (1), move 2 {list(pokemon.moves.keys())[1]} (2), use a potion (P), switch pokemon (S), or run (R)? ")
         else: move = input(f"Do you want to use move 1 {next(iter(pokemon.moves))} (1), move 2 {list(pokemon.moves.keys())[1]} (2), use a potion (P), throw a pokeball (T), switch pokemon (S), or run (R)? ")
 
         if move == '1':
@@ -186,8 +197,8 @@ def battle(player: Player, opp: str):
         print(f"You were hit with {cpu_move} for {cpu_pokemon.moves[cpu_move]} HP! {pokemon.name} has {pokemon.health} health left.")
         if pokemon.health <= 0:
             pokemon.health = 0
-            use = input("Your pokemon is about to faint, do you want to use a potion? (Y or N)")
-            if player.bag.get('potion', 0) > 0 and use.upper() == 'Y':
+            use = 'N' if automatico else input("Your pokemon is about to faint, do you want to use a potion? (Y or N)")
+            if not automatico and player.bag.get('potion', 0) > 0 and use.upper() == 'Y':
                 use_potion(player, pokemon)
             else:
                 rip = player.pokemon_list.pop(0)
