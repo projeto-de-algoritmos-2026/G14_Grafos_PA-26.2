@@ -1,5 +1,7 @@
 """Conversao de caminhos do grafo para comandos do jogo."""
 
+import game
+
 
 DIRECAO_POR_DELTA = {
     (-1, 0): "W",
@@ -21,3 +23,14 @@ def caminho_para_direcoes(caminho: list[tuple[int, int]]) -> list[str]:
                 f"caminho possui trecho nao adjacente: {atual} -> {proxima}"
             ) from erro
     return direcoes
+
+
+def executar_caminho(mapa, player, caminho) -> list[game.Movimento]:
+    """Executa um caminho e devolve o resultado de cada tentativa de passo."""
+    movimentos = []
+    for direcao in caminho_para_direcoes(caminho):
+        movimento = game.mover(mapa, player, direcao)
+        movimentos.append(movimento)
+        if not movimento.valido:
+            break
+    return movimentos
