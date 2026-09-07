@@ -18,12 +18,32 @@ class ResultadoBot:
     objetivos_visitados: list[tuple[int, int]] = field(default_factory=list)
     replanejamentos: int = 0
     motivo_parada: str = ""
+    # Somas das buscas de rota, que a fase 6 compara entre algoritmos. Ficam
+    # aqui porque so o loop ve todas as chamadas: quem olha de fora enxerga o
+    # resultado final da partida, nao o custo de cada replanejamento.
+    custo_planejado: float = 0.0
+    nos_expandidos: int = 0
 
 
 def executar_bot(
-    mapa, player, limite_objetivos=3, max_passos=None, visual: bool = False
+    mapa,
+    player,
+    limite_objetivos=3,
+    max_passos=None,
+    visual: bool = False,
+    buscar=dijkstra,
 ) -> ResultadoBot:
-    """Planeja, executa um objetivo e replaneja ate a partida parar."""
+    """Planeja, executa um objetivo e replaneja ate a partida parar.
+
+    `buscar` e a funcao de rota, com a assinatura da fase 3
+    (origem, destino, grid, estado) -> (caminho, custo, nos_expandidos).
+    O default e o Dijkstra; o benchmark da fase 6 troca por dfs_path e
+    bfs_path pra medir a mesma partida com rotas diferentes.
+
+    A ESCOLHA dos objetivos continua sendo a da fase 4 (score por Dijkstra)
+    em qualquer caso. E de proposito: trocar os dois de uma vez mistura duas
+    variaveis e nao da pra dizer se a diferenca veio da rota ou do alvo.
+    """
     resultado = ResultadoBot()
     passos = 0
 
@@ -48,10 +68,12 @@ def executar_bot(
             break
 
         destino = ordem[0]
-        caminho, _, _ = dijkstra(mapa.posicao, destino, mapa, estado)
+        caminho, custo, nos = buscar(mapa.posicao, destino, mapa, estado)
+        resultado.nos_expandidos += nos
         if not caminho:
             resultado.motivo_parada = "objetivo sem caminho"
             break
+        resultado.custo_planejado += custo
 
         if visual:
             print(f"\nPlano: {mapa.posicao} -> {destino}")
@@ -83,8 +105,8 @@ def executar_bot(
 
 
 def jogar_com_bot(
-    player, size=8, seed=None, max_passos=None, visual: bool = False
+    player, size=8, seed=None, max_passos=None, visual: bool = False, buscar=dijkstra
 ) -> ResultadoBot:
     """Cria o mapa e executa uma partida controlada pelo bot."""
     mapa = Grid(size=size, seed=seed)
-    return executar_bot(mapa, player, max_passos=max_passos, visual=visual)
+    return executar_bot(mapa, player, max_passos=max_passos, visual=visual, buscar=buscar)
