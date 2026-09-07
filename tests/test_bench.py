@@ -9,7 +9,7 @@ import math
 
 import pytest
 
-from bench import common, rotas
+from bench import common, partidas, rotas
 from graph.search import dijkstra_distancias
 
 
@@ -90,3 +90,39 @@ def test_resumo_de_rotas_agrega_por_tamanho_estado_e_algoritmo():
     assert len(resumo) == len(rotas.ESTADOS) * len(common.ALGORITMOS)
     assert sum(item["execucoes"] for item in resumo) == len(linhas)
     assert set(resumo[0]) == set(rotas.CAMPOS_RESUMO)
+
+
+def test_partida_do_bot_produz_a_linha_completa_sem_imprimir(capsys):
+    linha = partidas.rodar_partida(8, 1, "dijkstra")
+
+    assert set(linha) == set(partidas.CAMPOS)
+    assert linha["motivo_parada"]
+    assert linha["passos"] >= 0
+    assert capsys.readouterr().out == "", "a narracao da batalha nao pode vazar"
+
+
+def test_partida_e_reproduzivel_com_a_mesma_semente():
+    """Duas execucoes iguais precisam dar a mesma partida.
+
+    `tempo_ms` fica de fora da comparacao: e medicao de relogio, nao resultado
+    do algoritmo, e varia entre execucoes por definicao.
+    """
+    def sem_tempo(linha):
+        return {chave: valor for chave, valor in linha.items() if chave != "tempo_ms"}
+
+    primeira = partidas.rodar_partida(8, 3, "bfs")
+    segunda = partidas.rodar_partida(8, 3, "bfs")
+
+    assert sem_tempo(primeira) == sem_tempo(segunda)
+
+
+def test_resumo_de_partidas_conta_as_partidas_sem_objetivo():
+    linhas = partidas.rodar(tamanhos=(8,), seeds=3)
+    resumo = partidas.resumir(linhas)
+
+    assert len(resumo) == len(common.ALGORITMOS)
+    for item in resumo:
+        do_algoritmo = [l for l in linhas if l["algoritmo"] == item["algoritmo"]]
+        assert item["partidas_sem_objetivo"] == sum(
+            1 for l in do_algoritmo if l["objetivos_concluidos"] == 0
+        )
