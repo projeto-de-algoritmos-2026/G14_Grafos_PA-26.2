@@ -50,16 +50,15 @@ def test_rotas_gera_uma_linha_por_algoritmo_e_estado():
     assert all(len(grupo) == esperado for grupo in por_destino.values())
 
 
-def test_rotas_registra_mapa_com_origem_ilhada_em_vez_de_ignorar():
-    # A seed 0 em 8x8 nasce com a origem cercada de agua: sem surf o
-    # componente e so (0,0) e nao ha destino possivel.
-    linhas, descartes = rotas.rodar(tamanhos=(8,), seeds=1)
+def test_rotas_registra_mapa_com_origem_ilhada_em_vez_de_ignorar(seed_ilhada):
+    """Mapa cuja origem nasce cercada de agua nao some da amostra: sem surf o
+    componente e so (0,0) e nao ha destino possivel."""
+    seed = seed_ilhada(8)
+    linhas, descartes = rotas.rodar(tamanhos=(8,), seeds=seed + 1)
 
-    assert linhas == []
-    assert descartes == [
-        {"tamanho": 8, "seed": 0,
-         "motivo": "origem sem componente alcancavel sem surf"}
-    ]
+    assert {"tamanho": 8, "seed": seed,
+            "motivo": "origem sem componente alcancavel sem surf"} in descartes
+    assert all(linha["seed"] != seed for linha in linhas)
 
 
 def test_dijkstra_nunca_custa_mais_que_bfs_ou_dfs_na_mesma_rota():

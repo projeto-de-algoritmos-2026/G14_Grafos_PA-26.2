@@ -86,6 +86,25 @@ class Grid:
         self.grid[0][0].occupied_with = LIVRE
         self.grid[0][0].terrain = CONCRETO
         self.row_pos, self.col_pos = 0, 0
+        self._tirar_surf_da_agua()
+
+    def _tirar_surf_da_agua(self):
+        """O item de Surf nao nasce em celula de agua.
+
+        Sem isso o item que CONCEDE a travessia da agua pode nascer dentro da
+        agua, e ai ele exige Surf pra ser alcancado: e inatingivel por
+        construcao, nao por topologia do mapa. Isso nao e o mesmo fenomeno que
+        a fase 2 documentou (item que cai num componente separado da origem),
+        e uma contradicao da propria geracao.
+
+        A correcao troca o TERRENO da celula, nao a posicao do item: mover o
+        item mudaria a distribuicao de conteudo do mapa, e o que esta errado
+        aqui e o par (conteudo, terreno), nao onde o item caiu.
+        """
+        for linha in self.grid:
+            for celula in linha:
+                if celula.occupied_with == SURF and celula.terrain == AGUA:
+                    celula.terrain = CONCRETO
 
     @property
     def posicao(self):
