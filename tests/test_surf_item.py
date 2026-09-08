@@ -91,3 +91,16 @@ class TestAguaNoMovimento:
         assert game.mover(mapa, andarilho, "W").valido is True
         assert game.mover(mapa, andarilho, "D").valido is True
         assert mapa.posicao == (0, 1)
+
+
+def test_item_de_surf_nunca_nasce_na_agua():
+    """Item de Surf em celula de agua exige Surf pra ser alcancado: e
+    inatingivel por construcao, nao por topologia do mapa. Nao e o mesmo
+    fenomeno que a fase 2 documentou."""
+    for size in (8, 15, 30):
+        for seed in range(20):
+            mapa = grid.Grid(size=size, seed=seed)
+            for linha in mapa.grid:
+                for celula in linha:
+                    if celula.occupied_with == grid.SURF:
+                        assert celula.terrain != grid.AGUA, f"{size}x{size} seed {seed}"

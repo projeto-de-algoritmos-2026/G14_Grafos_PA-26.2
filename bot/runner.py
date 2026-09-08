@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 
+import game
 from grid import Grid
 from graph.search import dijkstra
 from graph.state import Estado
@@ -32,6 +33,8 @@ def executar_bot(
     max_passos=None,
     visual: bool = False,
     buscar=dijkstra,
+    ao_planejar=None,
+    ao_passo=None,
 ) -> ResultadoBot:
     """Planeja, executa um objetivo e replaneja ate a partida parar.
 
@@ -43,6 +46,11 @@ def executar_bot(
     A ESCOLHA dos objetivos continua sendo a da fase 4 (score por Dijkstra)
     em qualquer caso. E de proposito: trocar os dois de uma vez mistura duas
     variaveis e nao da pra dizer se a diferenca veio da rota ou do alvo.
+
+    `ao_planejar(destino, caminho, custo, nos)` e `ao_passo(movimento, direcao)`
+    sao ganchos de observacao, chamados enquanto a partida acontece. A interface
+    web transmite o bot por eles, em vez de reproduzir um resultado pronto. Sem
+    eles o comportamento e identico.
     """
     resultado = ResultadoBot()
     passos = 0
@@ -51,7 +59,7 @@ def executar_bot(
         print("Mapa inicial:")
         mapa.print_grid()
 
-    while player.pokemon_list and len(player.pokemon_list) < 4:
+    while not game.partida_encerrada(player):
         if max_passos is not None and passos >= max_passos:
             resultado.motivo_parada = "limite de passos"
             break
@@ -74,6 +82,8 @@ def executar_bot(
             resultado.motivo_parada = "objetivo sem caminho"
             break
         resultado.custo_planejado += custo
+        if ao_planejar is not None:
+            ao_planejar(destino, caminho, custo, nos)
 
         if visual:
             print(f"\nPlano: {mapa.posicao} -> {destino}")
@@ -81,11 +91,21 @@ def executar_bot(
             mapa.print_grid()
 
         movimentos = executar_caminho(
-            mapa, player, caminho, automatico=True, visual=visual
+            mapa, player, caminho, automatico=True, visual=visual, ao_passo=ao_passo
         )
         resultado.movimentos.extend(movimentos)
         passos += len(movimentos)
 
+        if mapa.posicao == destino:
+            resultado.objetivos_visitados.append(destino)
+
+        # O fim de partida e checado ANTES dos motivos de caminho. Vencer no
+        # meio de uma rota corta o caminho, e sem esta ordem o resultado diria
+        # "caminho interrompido" numa partida que na verdade foi ganha.
+        encerrada = game.partida_encerrada(player)
+        if encerrada:
+            resultado.motivo_parada = encerrada
+            break
         if not movimentos or not movimentos[-1].valido:
             resultado.motivo_parada = "movimento invalido"
             break
@@ -93,20 +113,15 @@ def executar_bot(
             resultado.motivo_parada = "caminho interrompido"
             break
 
-        resultado.objetivos_visitados.append(destino)
-
-    if not resultado.motivo_parada:
-        if not player.pokemon_list:
-            resultado.motivo_parada = "sem pokemon"
-        elif len(player.pokemon_list) >= 4:
-            resultado.motivo_parada = "quatro pokemon capturados"
-
+    resultado.motivo_parada = resultado.motivo_parada or game.partida_encerrada(player)
     return resultado
 
 
 def jogar_com_bot(
-    player, size=8, seed=None, max_passos=None, visual: bool = False, buscar=dijkstra
+    player, size=8, seed=None, max_passos=None, visual: bool = False, buscar=dijkstra,
+    ao_planejar=None, ao_passo=None,
 ) -> ResultadoBot:
     """Cria o mapa e executa uma partida controlada pelo bot."""
     mapa = Grid(size=size, seed=seed)
-    return executar_bot(mapa, player, max_passos=max_passos, visual=visual, buscar=buscar)
+    return executar_bot(mapa, player, max_passos=max_passos, visual=visual,
+                        buscar=buscar, ao_planejar=ao_planejar, ao_passo=ao_passo)

@@ -1,0 +1,523 @@
+/* Demo do G14. Tela de apresentacao: cabe numa tela sem rolar a pagina, fundo
+   escuro, contraste alto, numero grande. Fonte do sistema de proposito, sem
+   CDN: no auditorio pode nao haver internet, e fonte que nao carrega estraga a
+   demo inteira. */
+
+:root {
+  --fundo: #10141b;
+  --superficie: #171c25;
+  --superficie-2: #1f2632;
+  --borda: #2c3542;
+  --texto: #e7edf3;
+  --texto-2: #9aa8b8;
+  --texto-3: #6b7b8d;
+  --ouro: #ffd166;
+
+  --dfs: #f0798a;
+  --bfs: #4fc7b6;
+  --dijkstra: #7ea8dd;
+
+  /* Verde e azul precisam se distinguir em projetor ruim e em daltonismo, e
+     nao so no meu monitor. Estao separados nas tres dimensoes: matiz, e a
+     grama puxa pro amarelo enquanto a agua puxa pro ciano; luminosidade, e a
+     agua e visivelmente mais clara; e textura, a agua leva listra diagonal. */
+  --concrete: #565f6b;
+  --grass: #3d7a2e;
+  --water: #1c6fae;
+  --agua-listra: rgba(255, 255, 255, .13);
+  --bloqueio: #0b0e13;
+  --visitado: #2a3830;
+
+  --mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+/* A pagina inteira ocupa a janela e nao rola: o que cresce demais rola dentro
+   do seu proprio painel, pra que mapa, controles e legenda estejam sempre na
+   tela ao mesmo tempo durante a apresentacao. */
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ---------------- topo ---------------- */
+.topo {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  padding: 9px 18px;
+  background: var(--superficie);
+  border-bottom: 1px solid var(--borda);
+}
+.marca { display: flex; align-items: baseline; gap: 9px; }
+.marca strong { font-family: var(--mono); font-size: 17px; letter-spacing: .06em; }
+.marca span { color: var(--texto-3); font-size: 12px; }
+
+.abas { display: flex; gap: 4px; }
+.aba {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--texto-2);
+  font: 600 13px var(--sans);
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.aba:hover { color: var(--texto); background: var(--superficie-2); }
+.aba.ativa { background: var(--superficie-2); color: var(--texto); border-color: var(--borda); }
+.aba:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid var(--dijkstra);
+  outline-offset: 2px;
+}
+
+/* ---------------- esqueleto de tres colunas ---------------- */
+main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 238px;
+  gap: 14px;
+  padding: 14px 18px;
+}
+body.vista-bench main { grid-template-columns: minmax(0, 1fr); }
+body.vista-bench #legenda { display: none; }
+
+.vistas { min-height: 0; height: 100%; }
+.vista { display: none; height: 100%; min-height: 0; }
+.vista.ativa {
+  display: grid;
+  grid-template-columns: minmax(270px, 330px) minmax(0, 1fr);
+  gap: 14px;
+}
+#vista-bench.ativa { display: flex; flex-direction: column; gap: 12px; }
+
+.painel {
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-height: 0;
+  overflow-y: auto;
+}
+.painel.largo { flex: none; overflow: visible; }
+.painel h3 {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: var(--texto-3);
+}
+
+.controles { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--texto-3);
+}
+label.check { flex-direction: row; align-items: center; gap: 6px; text-transform: none; font-size: 11px; }
+input[type="number"], input[type="text"], select {
+  background: var(--fundo);
+  border: 1px solid var(--borda);
+  color: var(--texto);
+  font: 13px var(--mono);
+  padding: 6px 8px;
+  border-radius: 5px;
+  width: 76px;
+}
+input[type="text"] { width: 104px; }
+select { width: auto; }
+
+button.primario {
+  background: var(--superficie-2);
+  border: 1px solid var(--borda);
+  color: var(--texto);
+  font: 600 12.5px var(--sans);
+  padding: 7px 13px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+button.primario:hover:not(:disabled) { border-color: var(--dijkstra); color: #fff; }
+button.primario:disabled { opacity: .45; cursor: progress; }
+button.primario[data-algoritmo="dfs"]:hover { border-color: var(--dfs); }
+button.primario[data-algoritmo="bfs"]:hover { border-color: var(--bfs); }
+button.discreto {
+  background: transparent;
+  border: 1px dashed var(--borda);
+  color: var(--texto-2);
+  font: 600 11.5px var(--sans);
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+button.discreto:hover { border-color: var(--ouro); color: var(--ouro); }
+
+.nota { margin: 0; font-size: 12px; color: var(--texto-2); line-height: 1.45; }
+.nota.aviso { color: var(--texto-3); border-left: 2px solid var(--borda); padding-left: 9px; }
+.nota strong { color: var(--texto); }
+code { font-family: var(--mono); font-size: .92em; color: var(--texto); }
+kbd {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  border: 1px solid var(--borda);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 0 4px;
+  background: var(--superficie-2);
+}
+
+/* ---------------- tabuleiro ---------------- */
+.tabuleiro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  /* Ultimo recurso: em janela muito baixa a coluna rola por dentro, em vez de
+     espremer o mapa ate ele sumir. A pagina continua sem rolar. */
+  overflow-y: auto;
+}
+/* O palco cede a altura que sobra e o mapa se dimensiona por ela, nao pela
+   largura: e o que faz o quadrado caber sem empurrar a pagina. O piso e o que
+   impede o log de crescer por cima dele. */
+.palco {
+  flex: 1 1 auto;
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.grade {
+  position: relative;
+  display: grid;
+  /* sem gap: a linha da grade e borda DENTRO da celula, entao toda celula tem
+     o mesmo tamanho e o SVG da rota, esticado sobre a grade, cai no centro
+     certo. Com gap, 29 frestas num mapa 30x30 deslocam o traco. */
+  gap: 0;
+  background: var(--borda);
+  border: 1px solid var(--borda);
+  border-radius: 4px;
+  overflow: hidden;
+  height: 100%;
+  aspect-ratio: 1;
+  max-width: 100%;
+}
+.celula {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(6px, 2vh, 19px);
+  line-height: 1;
+  background: var(--concrete);
+  border-right: 1px solid rgba(8, 11, 16, .45);
+  border-bottom: 1px solid rgba(8, 11, 16, .45);
+  cursor: crosshair;
+}
+.celula.grass { background: var(--grass); }
+.celula.water {
+  background:
+    repeating-linear-gradient(135deg,
+      transparent 0 3px, var(--agua-listra) 3px 6px),
+    var(--water);
+}
+.celula.bloqueio { background: var(--bloqueio); cursor: not-allowed; }
+.celula.visitado { background: var(--visitado); }
+.celula.inalcancavel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 20, 27, .62);
+}
+.celula.jogador { box-shadow: inset 0 0 0 2px var(--ouro); z-index: 3; }
+.celula.destino { box-shadow: inset 0 0 0 2px #fff; z-index: 3; }
+
+.alvo {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 13px;
+  height: 13px;
+  padding: 0 3px;
+  border-radius: 0 0 0 4px;
+  background: var(--ouro);
+  color: #12161d;
+  font: 700 9.5px var(--mono);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4;
+}
+.celula.candidato::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px dashed rgba(255, 209, 102, .5);
+  border-radius: 3px;
+  z-index: 1;
+}
+.rota-svg { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+
+.hud {
+  flex: none;
+  display: flex;
+  font-family: var(--mono);
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.hud div { flex: 1 1 0; padding: 6px 10px; background: var(--superficie); border-right: 1px solid var(--borda); }
+.hud div:last-child { border-right: 0; }
+.hud dt { font-size: 9.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--texto-3); }
+.hud dd { margin: 1px 0 0; font-size: 15px; font-variant-numeric: tabular-nums; }
+.rodape-msg {
+  flex: none;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--texto-2);
+  min-height: 17px;
+}
+
+/* ---------------- cartoes e tabelas do painel ---------------- */
+.cartoes { display: flex; flex-direction: column; gap: 5px; }
+.cartao {
+  display: grid;
+  grid-template-columns: 70px repeat(3, 1fr);
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--superficie-2);
+  border-left: 3px solid var(--borda);
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.cartao.dfs { border-left-color: var(--dfs); }
+.cartao.bfs { border-left-color: var(--bfs); }
+.cartao.dijkstra { border-left-color: var(--dijkstra); }
+.cartao b { font-size: 12px; }
+.cartao .metrica { color: var(--texto-3); font-size: 9px; text-transform: uppercase; letter-spacing: .06em; display: block; }
+.cartao .valor { font-size: 14px; font-variant-numeric: tabular-nums; }
+.cartao .valor.melhor { color: var(--ouro); }
+.cartao.sem-rota { opacity: .55; }
+
+/* ---------------- narracao do bot ---------------- */
+/* Uma linha de status que muda a cada 200ms nao da pra acompanhar. O log
+   guarda o que aconteceu, na ordem, pra que a plateia consiga reconstruir a
+   decisao depois que o bot ja andou.
+
+   As travas de altura nao sao cosmeticas: sem elas o log cresce a cada passo,
+   empurra o palco pra cima e o mapa desaparece da tela no meio da simulacao. */
+.log {
+  list-style: none;
+  margin: 0;
+  padding: 6px 8px;
+  background: var(--fundo);
+  border: 1px solid var(--borda);
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.5;
+  /* encolhe antes do mapa, e nunca cresce alem disto */
+  flex: 0 1 auto;
+  max-height: 108px;
+  min-height: 34px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.log li { display: grid; grid-template-columns: 26px 1fr; gap: 7px; color: var(--texto-2); }
+.log li span.passo { color: var(--texto-3); text-align: right; font-variant-numeric: tabular-nums; }
+.log li b { color: var(--texto); font-weight: 600; }
+.log li.plano { color: var(--ouro); }
+.log li.batalha { color: var(--dfs); }
+.log li.item { color: var(--bfs); }
+.log li.fim { color: var(--texto); border-top: 1px solid var(--borda); padding-top: 3px; margin-top: 2px; }
+.log:empty { display: none; }
+
+.passo-a-passo {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--texto-2);
+}
+.passo-a-passo label { flex: none; }
+.passo-a-passo input[type="range"] { width: 130px; accent-color: var(--dijkstra); }
+.passo-a-passo em { font-style: normal; color: var(--texto-3); font-size: 9.5px; line-height: 1.25; }
+
+/* ---------------- legenda, coluna da direita ---------------- */
+/* Nao e enfeite: os simbolos vem do jogo original e nenhum se explica sozinho
+   (a pokebola e um simbolo de proibido). Cada linha traz o custo junto, porque
+   e o custo que faz a tela significar alguma coisa. */
+#legenda {
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-y: auto;
+  min-height: 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--texto-2);
+}
+#legenda h3 {
+  margin: 9px 0 4px;
+  font-size: 9.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--texto-3);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--borda);
+  padding-bottom: 3px;
+}
+#legenda h3:first-child { margin-top: 0; }
+#legenda h3 em { font-style: normal; text-transform: none; letter-spacing: 0; opacity: .8; }
+#legenda ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+#legenda li { display: grid; grid-template-columns: 15px 1fr auto; align-items: center; gap: 6px; }
+#legenda li span { display: flex; flex-direction: column; line-height: 1.2; }
+#legenda li em { font-style: normal; color: var(--texto-3); font-size: 9px; }
+#legenda li b { color: var(--texto); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+#legenda i { font-style: normal; display: block; justify-self: center; }
+#legenda i.t { width: 12px; height: 12px; border-radius: 2px; }
+#legenda i.t.concrete { background: var(--concrete); }
+#legenda i.t.grass { background: var(--grass); }
+#legenda i.t.water {
+  background:
+    repeating-linear-gradient(135deg,
+      transparent 0 2px, var(--agua-listra) 2px 4px),
+    var(--water);
+}
+#legenda i.g { font-size: 13px; line-height: 1; }
+#legenda i.apagado {
+  width: 12px; height: 12px; border-radius: 2px;
+  background: var(--concrete);
+  box-shadow: inset 0 0 0 12px rgba(16, 20, 27, .62);
+}
+#legenda i.numerado {
+  width: 14px; height: 13px;
+  background: var(--ouro);
+  color: #12161d;
+  font: 700 9px var(--mono);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 2px;
+}
+#legenda i.tracejado {
+  width: 12px; height: 12px;
+  border: 1px dashed rgba(255, 209, 102, .6);
+  border-radius: 3px;
+}
+#legenda i.linha { width: 15px; height: 3px; border-radius: 2px; }
+#legenda i.linha.dfs { background: var(--dfs); }
+#legenda i.linha.bfs { background: var(--bfs); }
+#legenda i.linha.dijkstra { background: var(--dijkstra); }
+
+/* ---------------- raias do benchmark ---------------- */
+.raias { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.raia {
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-top: 3px solid var(--borda);
+  border-radius: 8px;
+  padding: 11px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 0;
+  overflow-y: auto;
+}
+.raia.dfs { border-top-color: var(--dfs); }
+.raia.bfs { border-top-color: var(--bfs); }
+.raia.dijkstra { border-top-color: var(--dijkstra); }
+.raia h2 {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 16px;
+  letter-spacing: .05em;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.raia .posto { font-size: 11px; color: var(--texto-3); }
+.raia.chegou .posto { color: var(--ouro); }
+.barra { height: 6px; background: var(--superficie-2); border-radius: 5px; overflow: hidden; }
+.barra i { display: block; height: 100%; width: 0; background: var(--borda); transition: width .12s linear; }
+.raia.dfs .barra i { background: var(--dfs); }
+.raia.bfs .barra i { background: var(--bfs); }
+.raia.dijkstra .barra i { background: var(--dijkstra); }
+.relogio { font-family: var(--mono); font-size: 23px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; line-height: 1.1; }
+.relogio small { font-size: 11px; color: var(--texto-3); }
+.numeros { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(78px, 1fr)); gap: 8px; font-family: var(--mono); }
+.numeros dt { font-size: 8.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--texto-3); line-height: 1.2; }
+.numeros dd { margin: 1px 0 0; font-size: 16px; font-variant-numeric: tabular-nums; }
+.progresso-texto { font-family: var(--mono); font-size: 10.5px; color: var(--texto-3); }
+.amostra { font-family: var(--mono); font-size: 10px; color: var(--texto-3); letter-spacing: .04em; }
+.descricao-exp { font-family: var(--mono); font-size: 11px; color: var(--texto-3); margin: 0; }
+
+#bench-veredito:empty { display: none; }
+#bench-veredito { gap: 4px; padding: 11px 14px; }
+#bench-veredito p { margin: 0; font-size: 12.5px; line-height: 1.4; }
+#bench-veredito .destaque { color: var(--ouro); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Glossario do painel: o que cada medida significa e por que o bot replaneja.
+   Fica no painel e nao na legenda porque e texto de leitura, nao chave de
+   simbolo, e porque a coluna da legenda precisa caber sem rolar. */
+ul.glossario { list-style: none; margin: 0; padding: 0; }
+ul.glossario li + li { margin-top: 7px; }
+ul.glossario b {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--texto);
+  margin-bottom: 2px;
+}
+ul.glossario em {
+  font-style: normal;
+  display: block;
+  color: var(--texto-2);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+/* Grupos de metrica dentro da raia: os dois experimentos aparecem juntos, mas
+   separados, porque os custos deles nao sao comparaveis entre si. */
+.grupo-metrica { display: flex; flex-direction: column; gap: 4px; }
+.grupo-metrica > h3 {
+  margin: 0;
+  font: 600 9.5px var(--sans);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--texto-2);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--borda);
+  padding-bottom: 3px;
+}
+.grupo-metrica > h3 span { color: var(--texto-3); font-weight: 400; letter-spacing: .03em; }
+.grupo-metrica.esperando { opacity: .4; }

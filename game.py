@@ -17,6 +17,13 @@ from rich import print
 import grid as grid_mod
 from models import CpuPlayer, Player, Pokemon, generate_rand_pokemon
 
+# Condicao de fim da partida. Estava solta como literal dentro do laco do bot,
+# e por isso so era testada ENTRE planos: um caminho ja em execucao seguia ate
+# o fim mesmo com o jogo ganho no meio dele. Como e regra de partida, e nao do
+# bot, mora aqui junto do resto delas, e todo mundo que joga (bot, modo humano
+# da web) pergunta pro mesmo lugar.
+POKEMON_PARA_VENCER = 4
+
 # Tecla -> deslocamento (linha, coluna).
 DIRECOES = {
     'W': (-1, 0),
@@ -41,6 +48,19 @@ class Movimento:
     pegou_pokebola: bool = False
     pegou_surf: bool = False
     hp_perdido: int = 0
+
+
+def partida_encerrada(player: Player) -> str:
+    """Motivo pelo qual a partida acabou, ou string vazia se ela continua.
+
+    Devolve o motivo em vez de um booleano porque quem para precisa dizer por
+    que parou: o resultado do bot e a tela do modo humano mostram esse texto.
+    """
+    if not player.pokemon_list:
+        return "sem pokemon"
+    if len(player.pokemon_list) >= POKEMON_PARA_VENCER:
+        return "quatro pokemon capturados"
+    return ""
 
 
 def mover(grid, player: Player, direcao: str, automatico: bool = False) -> Movimento:
