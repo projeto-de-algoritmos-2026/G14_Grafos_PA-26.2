@@ -46,9 +46,12 @@ def executar_caminho(
             mapa.print_grid()
         if not movimento.valido:
             break
-        # Time zerado encerra a partida: seguir o caminho so acumularia passo
-        # sem jogo. Quem decide o que fazer a seguir e o runner, olhando
-        # player.pokemon_list.
-        if not player.pokemon_list:
+        # Partida encerrada para o caminho na hora, seja por derrota (time
+        # zerado) ou por VITORIA (time cheio). A checagem so existia entre
+        # planos, e como um caminho do DFS tem dezenas de passos, o bot
+        # continuava jogando um jogo ja ganho: em 30x30, 80% dos passos do DFS
+        # aconteciam depois da vitoria, com as batalhas e o HP perdido ali
+        # entrando no benchmark como se fossem consequencia da rota.
+        if game.partida_encerrada(player):
             break
     return movimentos

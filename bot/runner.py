@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 
+import game
 from grid import Grid
 from graph.search import dijkstra
 from graph.state import Estado
@@ -58,7 +59,7 @@ def executar_bot(
         print("Mapa inicial:")
         mapa.print_grid()
 
-    while player.pokemon_list and len(player.pokemon_list) < 4:
+    while not game.partida_encerrada(player):
         if max_passos is not None and passos >= max_passos:
             resultado.motivo_parada = "limite de passos"
             break
@@ -95,6 +96,16 @@ def executar_bot(
         resultado.movimentos.extend(movimentos)
         passos += len(movimentos)
 
+        if mapa.posicao == destino:
+            resultado.objetivos_visitados.append(destino)
+
+        # O fim de partida e checado ANTES dos motivos de caminho. Vencer no
+        # meio de uma rota corta o caminho, e sem esta ordem o resultado diria
+        # "caminho interrompido" numa partida que na verdade foi ganha.
+        encerrada = game.partida_encerrada(player)
+        if encerrada:
+            resultado.motivo_parada = encerrada
+            break
         if not movimentos or not movimentos[-1].valido:
             resultado.motivo_parada = "movimento invalido"
             break
@@ -102,14 +113,7 @@ def executar_bot(
             resultado.motivo_parada = "caminho interrompido"
             break
 
-        resultado.objetivos_visitados.append(destino)
-
-    if not resultado.motivo_parada:
-        if not player.pokemon_list:
-            resultado.motivo_parada = "sem pokemon"
-        elif len(player.pokemon_list) >= 4:
-            resultado.motivo_parada = "quatro pokemon capturados"
-
+    resultado.motivo_parada = resultado.motivo_parada or game.partida_encerrada(player)
     return resultado
 
 
