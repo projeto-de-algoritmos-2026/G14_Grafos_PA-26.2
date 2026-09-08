@@ -32,6 +32,8 @@ def executar_bot(
     max_passos=None,
     visual: bool = False,
     buscar=dijkstra,
+    ao_planejar=None,
+    ao_passo=None,
 ) -> ResultadoBot:
     """Planeja, executa um objetivo e replaneja ate a partida parar.
 
@@ -43,6 +45,11 @@ def executar_bot(
     A ESCOLHA dos objetivos continua sendo a da fase 4 (score por Dijkstra)
     em qualquer caso. E de proposito: trocar os dois de uma vez mistura duas
     variaveis e nao da pra dizer se a diferenca veio da rota ou do alvo.
+
+    `ao_planejar(destino, caminho, custo, nos)` e `ao_passo(movimento, direcao)`
+    sao ganchos de observacao, chamados enquanto a partida acontece. A interface
+    web transmite o bot por eles, em vez de reproduzir um resultado pronto. Sem
+    eles o comportamento e identico.
     """
     resultado = ResultadoBot()
     passos = 0
@@ -74,6 +81,8 @@ def executar_bot(
             resultado.motivo_parada = "objetivo sem caminho"
             break
         resultado.custo_planejado += custo
+        if ao_planejar is not None:
+            ao_planejar(destino, caminho, custo, nos)
 
         if visual:
             print(f"\nPlano: {mapa.posicao} -> {destino}")
@@ -81,7 +90,7 @@ def executar_bot(
             mapa.print_grid()
 
         movimentos = executar_caminho(
-            mapa, player, caminho, automatico=True, visual=visual
+            mapa, player, caminho, automatico=True, visual=visual, ao_passo=ao_passo
         )
         resultado.movimentos.extend(movimentos)
         passos += len(movimentos)
@@ -105,8 +114,10 @@ def executar_bot(
 
 
 def jogar_com_bot(
-    player, size=8, seed=None, max_passos=None, visual: bool = False, buscar=dijkstra
+    player, size=8, seed=None, max_passos=None, visual: bool = False, buscar=dijkstra,
+    ao_planejar=None, ao_passo=None,
 ) -> ResultadoBot:
     """Cria o mapa e executa uma partida controlada pelo bot."""
     mapa = Grid(size=size, seed=seed)
-    return executar_bot(mapa, player, max_passos=max_passos, visual=visual, buscar=buscar)
+    return executar_bot(mapa, player, max_passos=max_passos, visual=visual,
+                        buscar=buscar, ao_planejar=ao_planejar, ao_passo=ao_passo)

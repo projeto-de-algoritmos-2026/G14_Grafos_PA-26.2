@@ -26,13 +26,22 @@ def caminho_para_direcoes(caminho: list[tuple[int, int]]) -> list[str]:
 
 
 def executar_caminho(
-    mapa, player, caminho, automatico: bool = False, visual: bool = False
+    mapa, player, caminho, automatico: bool = False, visual: bool = False,
+    ao_passo=None,
 ) -> list[game.Movimento]:
-    """Executa um caminho e devolve o resultado de cada tentativa de passo."""
+    """Executa um caminho e devolve o resultado de cada tentativa de passo.
+
+    `ao_passo`, quando dado, e chamado com (movimento, direcao) logo depois de
+    cada passo. Existe para quem precisa acompanhar a partida enquanto ela
+    acontece, em vez de receber a lista no fim: a interface web transmite o bot
+    andando por esse gancho. Sem ele, nada muda.
+    """
     movimentos = []
     for direcao in caminho_para_direcoes(caminho):
         movimento = game.mover(mapa, player, direcao, automatico=automatico)
         movimentos.append(movimento)
+        if ao_passo is not None:
+            ao_passo(movimento, direcao)
         if visual:
             mapa.print_grid()
         if not movimento.valido:
