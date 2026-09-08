@@ -7,6 +7,10 @@ Projeto de Algoritmos (FGA0124) · Grupo 14
 | 190091681 | Lucas Gabriel Antunes |
 | 202045965 | Augusto Campos Duarte |
 
+## Apresentação
+
+[Vídeo de apresentação do trabalho](https://youtu.be/YvJO5PkX0QY)
+
 ## Sobre
 
 Um jogo de Pokémon de terminal adaptado para comparar algoritmos de busca em
