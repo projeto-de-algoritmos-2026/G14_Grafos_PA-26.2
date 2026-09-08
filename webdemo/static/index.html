@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>G14 - Pathfinding no Pokemon</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+
+<header class="topo">
+  <div class="marca">
+    <strong>G14</strong>
+    <span>Pathfinding no Pokemon</span>
+  </div>
+  <nav class="abas" role="tablist">
+    <button class="aba ativa" data-vista="jogo" role="tab">Jogo</button>
+    <button class="aba" data-vista="bot" role="tab">Bot</button>
+    <button class="aba" data-vista="bench" role="tab">Benchmark</button>
+  </nav>
+</header>
+
+<main>
+<div class="vistas">
+
+  <!-- ===================== JOGO ===================== -->
+  <section class="vista ativa" id="vista-jogo">
+    <div class="painel">
+      <div class="controles">
+        <label>tamanho <input type="number" id="jogo-size" value="10" min="3" max="40"></label>
+        <label>seed <input type="number" id="jogo-seed" value="3" min="0"></label>
+        <button class="primario" id="jogo-novo">Nova partida</button>
+      </div>
+      <div class="controles">
+        <button class="discreto" data-surf="jogo">achar seed com Surf pegavel</button>
+      </div>
+      <p class="nota" id="jogo-surf"></p>
+      <p class="nota"><strong>Objetivo: capturar 4 pokemon.</strong> E a mesma condicao que
+      encerra o laco do bot (<code>POKEMON_PARA_VENCER</code>): time cheio vence, time zerado
+      perde. O bot escolhe alvos pelo score da fase 4; aqui quem escolhe e voce.</p>
+      <p class="nota">Ande com <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> ou as setas.
+      Cada tecla vira uma chamada a <code>game.mover()</code>, a mesma funcao que o bot usa.</p>
+      <p class="nota aviso">A batalha resolve sozinha (primeiro golpe): o <code>battle()</code>
+      le do teclado do terminal, e daqui isso penduraria a conexao.</p>
+    </div>
+    <div class="tabuleiro">
+      <div class="palco"><div class="grade" id="jogo-grade"></div></div>
+      <div class="hud" id="jogo-hud"></div>
+      <p class="rodape-msg" id="jogo-msg"></p>
+    </div>
+  </section>
+
+  <!-- ===================== BOT ===================== -->
+  <section class="vista" id="vista-bot">
+    <div class="painel">
+      <div class="controles">
+        <label>tamanho <input type="number" id="bot-size" value="15" min="3" max="40"></label>
+        <label>seed <input type="number" id="bot-seed" value="2" min="0"></label>
+        <label>HP <input type="number" id="bot-hp" value="100" min="0" max="100"></label>
+        <label class="check"><input type="checkbox" id="bot-surf"> Surf</label>
+        <button class="discreto" data-surf="bot">achar seed com Surf pegavel</button>
+      </div>
+      <p class="nota" id="bot-surf-status"></p>
+
+      <h3>Comparar a rota</h3>
+      <p class="nota">Clique numa celula alcancavel. Os tres algoritmos calculam a MESMA rota, no
+      mesmo estado. So o algoritmo muda.</p>
+      <div id="bot-rotas" class="cartoes"></div>
+
+      <h3>Ver o bot jogar</h3>
+      <div class="controles">
+        <button class="primario" data-algoritmo="dfs">DFS</button>
+        <button class="primario" data-algoritmo="bfs">BFS</button>
+        <button class="primario" data-algoritmo="dijkstra">Dijkstra</button>
+      </div>
+      <div id="bot-status" class="cartoes"></div>
+
+      <h3>As medidas</h3>
+      <ul class="glossario">
+        <li><b>custo</b><em>soma do peso das celulas em que se entrou. E a grandeza que o
+        trabalho compara.</em></li>
+        <li><b>passos</b><em>quantas casas foram andadas. Menos passos nao e menor custo: e essa
+        a tese.</em></li>
+        <li><b>nos expandidos</b><em>quantos vertices o algoritmo tirou da fronteira e processou.
+        Conta na SAIDA da fila, nao na descoberta. Mede esforco sem depender da maquina, ao
+        contrario do milissegundo.</em></li>
+      </ul>
+
+      <h3>Por que o bot replaneja</h3>
+      <ul class="glossario">
+        <li><b>o grafo muda enquanto ele anda</b><em>batalha derruba o HP e a grama encarece
+        (muda o PESO); pegar Surf faz a agua virar aresta (muda a FORMA); celula visitada perde a
+        penalidade de batalha; e o alvo alcancado deixa de valer utilidade. O log diz qual desses
+        motivou cada replanejamento.</em></li>
+        <li><b>por objetivo, nao por passo</b><em>a alternativa correta seria um grafo sobre
+        posicao x estado, que explode de tamanho. Replanejar a cada objetivo da o mesmo resultado
+        e cabe no prazo.</em></li>
+        <li><b>a rota nunca fica invalida</b><em>o custo de uma celula so cai com o tempo, porque
+        a batalha nao repete. O plano so pode ficar sub-otimo, nunca impossivel.</em></li>
+      </ul>
+    </div>
+    <div class="tabuleiro">
+      <div class="palco"><div class="grade" id="bot-grade"></div></div>
+      <div class="hud" id="bot-hud"></div>
+      <p class="rodape-msg" id="bot-msg"></p>
+      <div class="passo-a-passo">
+        <label for="bot-ritmo">ritmo da tela</label>
+        <input type="range" id="bot-ritmo" min="40" max="700" step="20" value="200">
+        <span id="bot-ritmo-valor">200ms</span>
+        <em>o passo chega assim que o Python executa; o ritmo so controla a velocidade
+        com que a tela consome a fila</em>
+      </div>
+      <ol class="log" id="bot-log"></ol>
+    </div>
+  </section>
+
+  <!-- ===================== BENCHMARK ===================== -->
+  <section class="vista" id="vista-bench">
+    <div class="painel largo">
+      <div class="controles">
+        <label>tamanhos <input type="text" id="bench-tamanhos" value="8,15,30"></label>
+        <label>seeds <input type="number" id="bench-seeds" value="30" min="1" max="200"></label>
+        <label>repeticoes <input type="number" id="bench-rep" value="25" min="1" max="200"></label>
+        <button class="primario" id="bench-rodar">Largar a corrida</button>
+      </div>
+      <p class="nota"><strong>Um processo por algoritmo</strong>, nao thread: sob o GIL tres
+      threads se revezariam e o tempo na tela nao significaria nada. Cada raia roda
+      <strong>os dois experimentos</strong> e todo numero e <strong>media</strong>.
+      <strong>Nos expandidos</strong> = vertices que o algoritmo tirou da fronteira e processou,
+      medida de esforco que nao depende da maquina. Objetivo so existe na partida completa, e os
+      custos dos dois grupos <strong>nao sao comparaveis entre si</strong>: na partida o mapa muda
+      durante a execucao.</p>
+    </div>
+    <div class="raias" id="bench-raias"></div>
+    <div class="painel largo" id="bench-veredito"></div>
+  </section>
+
+</div>
+
+<aside class="legenda" id="legenda">
+  <h3>Terreno<em>custo de entrar</em></h3>
+  <ul>
+    <li><i class="t concrete"></i><span>concreto</span><b>1</b></li>
+    <li><i class="t grass"></i><span>grama<em>sobe conforme o HP cai</em></span><b>3 a 6</b></li>
+    <li><i class="t water"></i><span>agua<em>so existe com Surf</em></span><b>4</b></li>
+  </ul>
+
+  <h3>Conteudo da celula</h3>
+  <ul>
+    <li><i class="g">&#127796;</i><span>livre</span><b></b></li>
+    <li><i class="g">&#129428;</i><span>pokemon selvagem<em>batalha forcada</em></span><b>+8</b></li>
+    <li><i class="g">&#129354;</i><span>treinador<em>batalha, premio maior</em></span><b>+12</b></li>
+    <li><i class="g">&#9940;</i><span>pokebola<em>item, sem penalidade</em></span><b></b></li>
+    <li><i class="g">&#127940;</i><span>item de Surf<em>abre a agua</em></span><b></b></li>
+    <li><i class="g">&#128695;</i><span>bloqueio<em>a aresta nao existe</em></span><b></b></li>
+    <li><i class="g">&#9989;</i><span>visitado<em>batalha nao repete</em></span><b></b></li>
+    <li><i class="g">&#129761;</i><span>voce</span><b></b></li>
+  </ul>
+
+  <h3>Marcacoes</h3>
+  <ul>
+    <li><i class="apagado"></i><span>escurecido<em>fora do alcance da origem</em></span><b></b></li>
+    <li><i class="numerado">1</i><span>objetivo<em>ordem de visita da fase 4</em></span><b></b></li>
+    <li><i class="tracejado"></i><span>candidato<em>perdeu no score</em></span><b></b></li>
+  </ul>
+
+  <h3>Rotas</h3>
+  <ul>
+    <li><i class="linha dfs"></i><span>DFS</span><b></b></li>
+    <li><i class="linha bfs"></i><span>BFS</span><b></b></li>
+    <li><i class="linha dijkstra"></i><span>Dijkstra</span><b></b></li>
+  </ul>
+
+</aside>
+</main>
+
+<script src="/app.js"></script>
+</body>
+</html>
